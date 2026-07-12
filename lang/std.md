@@ -113,6 +113,11 @@ returns `l` reduced to `acc` with `r`.
 ```
 returns `a` joined with `b`.
 
+```lisp
+(reverse a)
+```
+returns `a` reversed.
+
 ## Basic macros
 
 ```lisp
@@ -155,7 +160,7 @@ $status
 contains the exit code of the last expression executed.
 
 ```lisp
-(> $stderr $stdout)
+(> stderr stdout)
 ```
 is the equivalent of `2>&1` in POSIX Shell.
 
