@@ -1,4 +1,4 @@
-script = *( expression / function (";;" / 2sep ) / comment )
+script = *("(" function ")" / function (";;" / 2sep ) / comment / LWSP)
 
 sep = CRLF / LF
 comment = "#" *OCTET sep
@@ -7,7 +7,7 @@ expression = "(" function ")" / literal / variable / evaluate
 function = identifier [ SP expression *(SP expression) ]
 
 ; string
-literal = DQUOTE *OCTET DQUOTE
+literal = DQUOTE *OCTET DQUOTE / *( ALPHA / DIGIT / "-" / "_" / "." )
 ; number
 literal =/ 1*DIGIT
 ; bool
@@ -17,7 +17,7 @@ literal =/ "[" [ expression *(SP expression ) ] "]"
 ; empty
 literal =/ "()"
 
-identifier = 1*OCTET
+identifier = 1*( VCHAR - SP)
 
 variable = "$" ALPHA / "${" identifier "}"
 evaluate = "$(" expression ")"
