@@ -1,0 +1,8 @@
+set console "/run/console"
+
+check (exists? $console)
+    (do 
+        (echo "$console exists")
+        (rm $console))
+
+start-server --console $console

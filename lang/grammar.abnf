@@ -1,9 +1,9 @@
-script = *( expression / function ( ";;" / 2sep ) / comment )
+script = *( expression / function (";;" / 2sep ) / comment )
 
 sep = CRLF / LF
 comment = "#" *OCTET sep
 
-expression = "(" function ")" / literal
+expression = "(" function ")" / literal / variable / evaluate
 function = identifier [ SP expression *(SP expression) ]
 
 ; string
@@ -14,5 +14,10 @@ literal =/ 1*DIGIT
 literal =/ "true" / "false"
 ; list
 literal =/ "[" [ expression *(SP expression ) ] "]"
+; empty
+literal =/ "()"
 
 identifier = 1*OCTET
+
+variable = "$" ALPHA / "${" identifier "}"
+evaluate = "$(" expression ")"
