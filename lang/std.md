@@ -18,8 +18,14 @@ defines a macro with the same arguments of `defunc`.
 ```
 executes multiple expressions where `exprs` is a list of expressions.
 
+```lisp
+(lambda args expr)
+```
+returns an anonymous function with `args` a list of identifier and `expr` an expression.
+
 ## Basic functions
 
+### Integers and booleans
 ```lisp
 (+ a b)
 (- a b)
@@ -59,6 +65,7 @@ are the logical operators.
 ```
 are the bitwise operators.
 
+### Lists and strings
 ```lisp
 (append a b)
 ```
@@ -91,6 +98,21 @@ returns the length of `a`.
 returns `true` if a is empty.
 It is equivalent to `(= (len a) 0)`.
 
+```lisp
+(map a b)
+```
+returns `a` mapped with `b`.
+
+```lisp
+(reduce l acc r)
+```
+returns `l` reduced to `acc` with `r`.
+
+```lisp
+(join a b)
+```
+returns `a` joined with `b`.
+
 ## Basic macros
 
 ```lisp
@@ -102,14 +124,13 @@ executes `a` if `(= cond true)` or b otherwise.
 (set name value)
 ```
 sets a variable.
-It is equivalent to `(defunc name [] value)`.
+It is equivalent to `(defunc "\$name" [] value)`.
 
 ```lisp
 (check cond a)
 ```
 executes `a` if `(= cond true)`.
 It is equivalent to `(if cond a ())`.
-Only useful in a `(do ...)`.
 
 ## Stdin, stdout and stderr
 ```lisp
@@ -127,8 +148,14 @@ $stderr
 ```
 contains the content of the linked `/dev/std{in,out,err}`.
 
+```
+$?
+$status
+```
+contains the exit code of the last expression executed.
+
 ```lisp
-(> stderr stdout)
+(> $stderr $stdout)
 ```
 is the equivalent of `2>&1` in POSIX Shell.
 

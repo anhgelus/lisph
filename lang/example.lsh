@@ -1,3 +1,5 @@
+#!/usr/bin/lisph
+
 set console "/run/console"
 
 check (exists? $console)
