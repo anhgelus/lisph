@@ -1,9 +1,9 @@
-script = *("(" function ")" / function (";;" / 2sep ) / comment / LWSP)
+script = *( function-expression / function (";" / 2LWSP ) / comment / LWSP )
 
-sep = CRLF / LF
-comment = "#" *OCTET sep
+comment = "#" *OCTET LWSP
 
-expression = "(" function ")" / literal / variable / evaluate
+expression = function-expression / literal / variable / evaluate
+function-expression = "(" [ LWSP ] function [ LWSP ] ")"
 function = identifier [ SP expression *(SP expression) ]
 
 ; string
@@ -13,11 +13,11 @@ literal =/ 1*DIGIT
 ; bool
 literal =/ "true" / "false"
 ; list
-literal =/ "[" [ expression *(SP expression ) ] "]"
+literal =/ "[" [LWSP] [ expression *( LWSP expression ) ] [LWSP] "]"
 ; empty
 literal =/ "()"
 
-identifier = 1*( VCHAR - SP)
+identifier = 1*( VCHAR - LWSP )
 
 variable = "$" ALPHA / "${" identifier "}"
 evaluate = "$(" expression ")"
