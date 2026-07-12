@@ -1,0 +1,18 @@
+script = *( expression / function ( ";;" / 2sep ) / comment )
+
+sep = CRLF / LF
+comment = "#" *OCTET sep
+
+expression = "(" function ")" / literal
+function = identifier [ SP expression *(SP expression) ]
+
+; string
+literal = DQUOTE *OCTET DQUOTE
+; number
+literal =/ 1*DIGIT
+; bool
+literal =/ "true" / "false"
+; list
+literal =/ "[" [ expression *(SP expression ) ] "]"
+
+identifier = 1*OCTET
