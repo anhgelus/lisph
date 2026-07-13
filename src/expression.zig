@@ -1,20 +1,22 @@
 const std = @import("std");
 const Lexer = @import("lexer/Lexer.zig");
 const composed = @import("composed.zig");
+const Expression = @import("eval/Expression.zig");
 
-pub const Errors = error{ InvalidExpression, InvalidVariable, InvalidEvaluate } || composed.Errors || std.fmt.ParseIntError;
+pub const Errors =
+    error{ InvalidExpression, InvalidVariable, InvalidEvaluate } || composed.Errors || std.fmt.ParseIntError || std.mem.Allocator.Error;
 
-pub fn parse(l: *Lexer) Errors!void {
+pub fn parse(l: *Lexer, alloc: std.mem.Allocator) Errors!Expression {
     const tok = l.peek() orelse return Errors.InvalidExpression;
-    switch (tok.kind) {
-        .function_beg => try composed.parseFunction(l),
+    return switch (tok.kind) {
+        .function_beg => (try composed.parseFunction(l, alloc)).interface,
         .boolean => try parseBoolean(l),
         .number => try parseNumber(l),
         .string_delimiter => try composed.parseString(l),
         .list_beg => try composed.parseList(l),
         .variable => try parseVariable(l),
-        else => return Errors.InvalidExpression,
-    }
+        else => Errors.InvalidExpression,
+    };
 }
 
 pub fn parseBoolean(l: *Lexer) !void {

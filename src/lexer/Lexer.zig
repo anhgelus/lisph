@@ -19,7 +19,7 @@ pub const Kind = enum {
     function_separator,
     separator,
 
-    fn compatibleWith(self: @This(), kind: @This()) bool {
+    inline fn compatibleWith(self: @This(), kind: @This()) bool {
         if (self == .boolean and kind == .string_content) return true;
         if (self == .string_content and kind == .boolean) return true;
         if (self == .number and kind == .string_content) return true;
