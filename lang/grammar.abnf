@@ -1,10 +1,13 @@
-script = *( function-expression / function (";" / 2LWSP ) / comment / LWSP )
+script = *( function-expression / function (";" / 2strong-separator ) / comment / separator)
 
-comment = "#" *OCTET LWSP
+strong-separator = [CR] LF
+sep = 1*WSP / function-separator
+
+comment = "#" *( VCHAR - (strong-separator) ) strong-separator
 
 expression = function-expression / literal / variable / evaluate
-function-expression = "(" [ LWSP ] function [ LWSP ] ")"
-function = identifier [ SP expression *(SP expression) ]
+function-expression = "(" *sep function *sep ")"
+function = identifier [ sep expression *(sep expression) ]
 
 ; string
 literal = DQUOTE *OCTET DQUOTE / *( ALPHA / DIGIT / "-" / "_" / "." )
@@ -13,11 +16,11 @@ literal =/ 1*DIGIT
 ; bool
 literal =/ "true" / "false"
 ; list
-literal =/ "[" [LWSP] [ expression *( LWSP expression ) ] [LWSP] "]"
+literal =/ "[" *sep [ expression *( 1*sep expression ) ] *sep "]"
 ; empty
 literal =/ "()"
 
-identifier = 1*( VCHAR - SP - CR - LF )
+identifier = 1*( VCHAR - sep )
 
 variable = "$" identifier / "${" identifier "}"
 evaluate = "$" function-expression
