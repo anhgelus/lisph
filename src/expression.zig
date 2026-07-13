@@ -1,48 +1,44 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const Lexer = @import("lexer/Lexer.zig");
 const composed = @import("composed.zig");
 const Expression = @import("eval/Expression.zig");
 
-pub const Errors =
-    error{ InvalidExpression, InvalidVariable, InvalidEvaluate } || composed.Errors || std.fmt.ParseIntError || std.mem.Allocator.Error;
+pub const Errors = error{
+    InvalidExpression,
+    InvalidVariable,
+    InvalidEvaluate,
+    InvalidString,
+} || composed.Errors || std.fmt.ParseIntError || Allocator.Error;
 
-pub fn parse(l: *Lexer, alloc: std.mem.Allocator) Errors!Expression {
+pub fn parse(l: *Lexer, alloc: Allocator) Errors!Expression {
     const tok = l.peek() orelse return Errors.InvalidExpression;
     return switch (tok.kind) {
         .function_beg => (try composed.parseFunction(l, alloc)).interface,
-        .boolean => try parseBoolean(l),
-        .number => try parseNumber(l),
-        .string_delimiter => try composed.parseString(l),
-        .list_beg => try composed.parseList(l),
-        .variable => try parseVariable(l),
+        .boolean => (try parseBoolean(l, alloc)).interface,
+        .number => (try parseNumber(l, alloc)).interface,
+        .string_delimiter => (try composed.parseString(l, alloc)).interface,
+        .string_content => (try parseLiteralString(l, alloc)).interface,
+        .list_beg => (try composed.parseList(l, alloc)).interface,
+        .variable => (try composed.parseVariable(l, alloc)).interface,
         else => Errors.InvalidExpression,
     };
 }
 
-pub fn parseBoolean(l: *Lexer) !void {
+pub fn parseBoolean(l: *Lexer, alloc: Allocator) !*Expression.literal.Boolean {
     const tok = l.next().?;
-    if (std.mem.eql(u8, tok.content, "true")) {} // todo
-    return; //
+    return try Expression.literal.Boolean.init(alloc, std.mem.eql(u8, tok.content, "true"));
 }
 
-pub fn parseNumber(l: *Lexer) !void {
+pub fn parseNumber(l: *Lexer, alloc: Allocator) !*Expression.literal.Number {
     const tok = l.next().?;
-    _ = try std.fmt.parseUnsigned(u64, tok.content, 0);
+    const i = try std.fmt.parseUnsigned(u64, tok.content, 0);
+    return try Expression.literal.Number.init(alloc, i);
 }
 
-pub fn parseVariable(l: *Lexer) !void {
+pub fn parseLiteralString(l: *Lexer, alloc: Allocator) !*Expression.literal.String {
+    const tok = l.next().?;
+    if (l.next()) |it| if (it.kind != .separator) return Errors.InvalidString;
     l.consume();
-    var tok = l.next() orelse return Errors.InvalidVariable;
-    // evaluate here
-    if (tok.kind == .function_beg) {
-        const is_func = l.peek() orelse return Errors.InvalidVariable != .string_content;
-        if (is_func) l.consume();
-        try parse(l);
-        if (!is_func) {
-            tok = l.next() orelse return Errors.InvalidEvaluate;
-            if (tok.kind != .function_end) return Errors.InvalidEvaluate;
-        }
-        return;
-    }
-    if (!tok.is_identifier) return Errors.InvalidVariable;
+    return try Expression.literal.String.init(alloc, tok.content);
 }

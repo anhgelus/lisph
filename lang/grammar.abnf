@@ -17,7 +17,7 @@ literal =/ "[" [LWSP] [ expression *( LWSP expression ) ] [LWSP] "]"
 ; empty
 literal =/ "()"
 
-identifier = 1*( VCHAR - LWSP )
+identifier = 1*( VCHAR - SP - CR - LF )
 
-variable = "$" ALPHA / "${" identifier "}"
-evaluate = "$(" expression ")"
+variable = "$" identifier / "${" identifier "}"
+evaluate = "$" function-expression

@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-pub const Function = @import("Function.zig");
+pub const function = @import("function.zig");
+pub const literal = @import("literal.zig");
+pub const ComposedString = @import("ComposedString.zig");
 const Expression = @This();
 
 pub const Errors = error{
@@ -8,6 +10,7 @@ pub const Errors = error{
     UnknownFunction,
     UnknownVariable,
     InvalidFunctionArguments,
+    InvalidComposedStringContent, // this is an internal error
 } || Allocator.Error;
 
 pub const Type = enum {
@@ -16,7 +19,9 @@ pub const Type = enum {
     variable,
     evaluate,
     boolean,
-    string,
+    string_literal,
+    string_composed,
+    list,
 };
 
 ptr: *anyopaque,
@@ -31,5 +36,5 @@ pub fn eval(self: Expression, alloc: Allocator, ctx: Context) Errors!Expression 
 
 pub const Context = struct {
     variables: std.StringHashMap(Expression),
-    functions: std.StringHashMap(*Function.Def),
+    functions: std.StringHashMap(*function.Def),
 };
