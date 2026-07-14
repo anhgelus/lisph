@@ -25,7 +25,6 @@ pub const Kind = enum {
         if (self == .boolean and kind == .string_content) return true;
         if (self == .string_content and kind == .boolean) return true;
         if (self == .number and kind == .string_content) return true;
-        if (self == .function_separator and kind == .string_content) return true;
         return switch (self) {
             .string_content, .number, .separator => self == kind,
             else => false,
@@ -57,38 +56,37 @@ pub fn next(self: *Self) ?Token {
         if (self.next_string or rune.len > 1) {
             self.next_string = false;
             current_kind = .string_content;
-            continue;
-        }
-        if (eql(u8, self.iterator.bytes[beg..end], "true") or
+        } else if (eql(u8, self.iterator.bytes[beg..end], "true") or
             eql(u8, self.iterator.bytes[beg..end], "false"))
         {
             current_kind = .boolean;
-            continue;
+        } else {
+            switch (rune[0]) {
+                '\\' => {
+                    self.next_string = true;
+                    continue;
+                },
+                '\r' => continue,
+                else => current_kind = kindOf(rune[0], current_kind),
+            }
         }
-        switch (rune[0]) {
-            '\\' => self.next_string = true,
-            '\r' => {},
-            else => {
-                current_kind = kindOf(rune[0], current_kind);
-                const next_rune = self.iterator.peek(1);
-                if (next_rune.len == 0) break :iter;
-                const next_kind = if (next_rune.len == 1)
-                    kindOf(next_rune[0], current_kind)
-                else
-                    .string_content;
-                if (current_kind == .string_content and
-                    (next_kind == .separator or next_kind == .function_end or next_kind == .function_separator))
-                {
-                    is_identifier = true;
-                    break :iter;
-                } else if (current_kind == .function_beg and next_kind == .function_end) {
-                    _ = self.next();
-                    end += 1;
-                    current_kind = .empty;
-                    break :iter;
-                } else if (!current_kind.?.compatibleWith(next_kind)) break :iter;
-            },
-        }
+        const next_rune = self.iterator.peek(1);
+        if (next_rune.len == 0) break :iter;
+        const next_kind: Kind = if (next_rune.len == 1)
+            kindOf(next_rune[0], current_kind)
+        else
+            .string_content;
+        if (current_kind == .string_content and
+            (next_kind == .separator or next_kind == .function_end or next_kind == .function_separator))
+        {
+            is_identifier = true;
+            break :iter;
+        } else if (current_kind == .function_beg and next_kind == .function_end) {
+            const tok = self.next().?;
+            end += tok.content.len;
+            current_kind = .empty;
+            break :iter;
+        } else if (!current_kind.?.compatibleWith(next_kind)) break :iter;
     }
     return .{
         .kind = current_kind orelse return null,
@@ -97,14 +95,13 @@ pub fn next(self: *Self) ?Token {
     };
 }
 
-pub fn skipSeparator(self: *Self) bool {
-    var skipped = false;
-    while (self.peek()) |it|
+pub inline fn skipSeparator(self: *Self) bool {
+    if (self.peek()) |it|
         if (it.kind == .separator) {
-            skipped = true;
             self.consume();
-        } else break;
-    return skipped;
+            return true;
+        };
+    return false;
 }
 
 pub fn peek(self: *Self) ?Token {
