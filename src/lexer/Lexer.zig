@@ -69,15 +69,24 @@ pub fn next(self: *Self) ?Token {
             '\\' => self.next_string = true,
             '\r' => {},
             else => {
-                current_kind = self.kindOf(rune[0], current_kind);
+                current_kind = kindOf(rune[0], current_kind);
                 const next_rune = self.iterator.peek(1);
-                if (next_rune.len == 0) break;
+                if (next_rune.len == 0) break :iter;
                 const next_kind = if (next_rune.len == 1)
-                    self.kindOf(next_rune[0], current_kind)
+                    kindOf(next_rune[0], current_kind)
                 else
                     .string_content;
-                if (current_kind == .string_content and next_kind == .separator) is_identifier = true;
-                if (!current_kind.?.compatibleWith(next_kind)) break :iter;
+                if (current_kind == .string_content and
+                    (next_kind == .separator or next_kind == .function_end or next_kind == .function_separator))
+                {
+                    is_identifier = true;
+                    break :iter;
+                } else if (current_kind == .function_beg and next_kind == .function_end) {
+                    _ = self.next();
+                    end += 1;
+                    current_kind = .empty;
+                    break :iter;
+                } else if (!current_kind.?.compatibleWith(next_kind)) break :iter;
             },
         }
     }
@@ -107,18 +116,9 @@ pub fn consume(self: *Self) void {
     self.before = null;
 }
 
-pub fn kindOf(self: *Self, rune: u8, before: ?Kind) Kind {
+pub fn kindOf(rune: u8, before: ?Kind) Kind {
     return switch (rune) {
-        '(' => blk: {
-            var kind: Kind = .function_beg;
-            if (self.peek()) |tok| {
-                if (tok.kind == .function_end) {
-                    self.consume();
-                    kind = .empty;
-                }
-            }
-            break :blk kind;
-        },
+        '(' => .function_beg,
         ')' => .function_end,
         '[' => .list_beg,
         ']' => .list_end,
@@ -143,7 +143,7 @@ fn testNext2() ?Token {
 }
 
 fn testBasicLexer(content: []const u8, k: Kind) !void {
-    var lex = Self{ .iterator = Iterator{ .bytes = content, .i = 0 } };
+    var lex = Self{ .iterator = .{ .bytes = content, .i = 0 } };
     const n = lex.next().?;
     expect(n.kind == k) catch {
         std.debug.print("invalid result: {} ({s}), wanted {}\n", .{ n.kind, n.content, k });
@@ -187,11 +187,13 @@ test "complexe" {
     try expect(tok.kind == .separator);
     tok = l.next().?;
     try expect(tok.kind == .string_content);
+    try expect(tok.is_identifier);
     try expect(eql(u8, tok.content, "arg"));
     tok = l.next().?;
     try expect(tok.kind == .separator);
     tok = l.next().?;
     try expect(tok.kind == .string_content);
+    try expect(tok.is_identifier);
     try expect(eql(u8, tok.content, "content"));
     tok = l.next().?;
     try expect(tok.kind == .function_end);
