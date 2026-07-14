@@ -61,12 +61,28 @@ pub fn parseList(l: *Lexer, alloc: Allocator) !*Expression.List {
     return list;
 }
 
-pub fn parseVariable(l: *Lexer, alloc: Allocator) !void {
+pub fn parseVariable(l: *Lexer, alloc: Allocator) !Expression {
     l.consume();
-    const tok = l.peek() orelse return Errors.InvalidVariable;
+    var tok = l.peek() orelse return Errors.InvalidVariable;
     // is an evaluate
     if (tok.kind == .function_beg) {
-        _ = try parseFunction(l, alloc);
+        const call = parseFunction(l, alloc) catch |err| switch (err) {
+            Errors.InvalidFunction => return Errors.InvalidEvaluate,
+            else => return err,
+        };
+        return (try Expression.variable.Evaluate.init(alloc, call)).interface;
+    }
+    const sep = tok.kind == .variable_beg;
+    if (sep) {
+        l.consume();
+        tok = l.peek() orelse return Errors.InvalidVariable;
     }
     if (!tok.is_identifier) return Errors.InvalidVariable;
+    l.consume();
+    const name = tok.content;
+    if (sep) {
+        tok = l.next() orelse return Errors.InvalidVariable;
+        if (tok.kind != .variable_end) return Errors.InvalidVariable;
+    }
+    return (try Expression.variable.Var.init(alloc, name)).interface;
 }

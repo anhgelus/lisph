@@ -4,6 +4,7 @@ pub const function = @import("function.zig");
 pub const literal = @import("literal.zig");
 pub const ComposedString = @import("ComposedString.zig");
 pub const List = @import("List.zig");
+pub const variable = @import("variable.zig");
 const Expression = @This();
 
 pub const Errors = error{

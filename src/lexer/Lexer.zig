@@ -11,6 +11,8 @@ pub const Kind = enum {
     number,
     boolean,
     variable,
+    variable_beg,
+    variable_end,
     function_beg,
     function_end,
     list_beg,
@@ -25,8 +27,8 @@ pub const Kind = enum {
         if (self == .number and kind == .string_content) return true;
         if (self == .function_separator and kind == .string_content) return true;
         return switch (self) {
-            .string_delimiter, .function_beg, .function_end, .list_beg, .list_end, .empty, .variable => false,
-            else => self == kind,
+            .string_content, .number, .separator => self == kind,
+            else => false,
         };
     }
 };
@@ -123,6 +125,8 @@ pub fn kindOf(self: *Self, rune: u8, before: ?Kind) Kind {
         '\n', ';' => .function_separator,
         ' ' => .separator,
         '"' => .string_delimiter,
+        '{' => if (before == null) .variable_beg else .string_content,
+        '}' => if (before == null) .variable_end else .string_content,
         else => if ((rune <= '9' and rune >= '0') and (before == null or before.? == .number))
             .number
         else

@@ -18,7 +18,7 @@ pub fn parse(l: *Lexer, alloc: Allocator) Errors!Expression {
         .string_delimiter => (try composed.parseString(l, alloc)).interface,
         .string_content => (try parseLiteralString(l, alloc)).interface,
         .list_beg => (try composed.parseList(l, alloc)).interface,
-        .variable => (try composed.parseVariable(l, alloc)).interface,
+        .variable => try composed.parseVariable(l, alloc),
         else => Errors.InvalidExpression,
     };
 }
