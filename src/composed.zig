@@ -4,7 +4,13 @@ const Lexer = @import("lexer/Lexer.zig");
 const expression = @import("expression.zig");
 const Expression = @import("eval/Expression.zig");
 
-pub const Errors = error{ InvalidFunction, InvalidList, InvalidString };
+pub const Errors = error{
+    InvalidFunction,
+    InvalidList,
+    InvalidString,
+    InvalidVariable,
+    InvalidEvaluate,
+};
 
 pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.function.Call {
     var tok = l.next().?;
@@ -42,15 +48,17 @@ pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {
     return try Expression.ComposedString.init(alloc, try content.toOwnedSlice(alloc));
 }
 
-pub fn parseList(l: *Lexer, alloc: Allocator) !void {
+pub fn parseList(l: *Lexer, alloc: Allocator) !*Expression.List {
     l.consume();
+    const list = try Expression.List.init(alloc);
     var tok = l.next();
     while (tok) |it| : (tok = l.next()) {
         if (it.kind == .list_end) break;
-        _ = try expression.parse(l, alloc);
+        try list.append(try expression.parse(l, alloc));
         if (!l.skipSeparator()) if (l.peek()) |p| if (p.kind != .list_end) return Errors.InvalidList;
     }
     if (tok == null) return Errors.InvalidList;
+    return list;
 }
 
 pub fn parseVariable(l: *Lexer, alloc: Allocator) !void {

@@ -23,6 +23,11 @@ executes multiple expressions where `exprs` is a list of expressions.
 ```
 returns an anonymous function with `args` a list of identifier and `expr` an expression.
 
+```lisp
+(type a)
+```
+returns the type of `a`.
+
 ## Basic functions
 
 ### Integers and booleans

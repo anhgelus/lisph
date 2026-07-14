@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 pub const function = @import("function.zig");
 pub const literal = @import("literal.zig");
 pub const ComposedString = @import("ComposedString.zig");
+pub const List = @import("List.zig");
 const Expression = @This();
 
 pub const Errors = error{
@@ -22,6 +23,17 @@ pub const Type = enum {
     string_literal,
     string_composed,
     list,
+
+    pub inline fn name(t: Type) []const u8 {
+        return switch (t) {
+            .function => "function",
+            .number => "number",
+            .variable, .evaluate => "unknown",
+            .boolean => "boolean",
+            .string_literal, .string_composed => "string",
+            .list => "list",
+        };
+    }
 };
 
 ptr: *anyopaque,

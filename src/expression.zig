@@ -6,8 +6,6 @@ const Expression = @import("eval/Expression.zig");
 
 pub const Errors = error{
     InvalidExpression,
-    InvalidVariable,
-    InvalidEvaluate,
     InvalidString,
 } || composed.Errors || std.fmt.ParseIntError || Allocator.Error;
 
