@@ -1,10 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
+const expect = std.testing.expect;
 
 const Self = @This();
 
-content: std.DoublyLinkedList,
+content: std.DoublyLinkedList = .{},
 arena: std.heap.ArenaAllocator,
 interface: Expression = .{
     .ptr = undefined,
@@ -20,13 +21,12 @@ pub fn init(parent: Allocator) !*Self {
     var arena = std.heap.ArenaAllocator.init(parent);
     var alloc = arena.allocator();
     const self = try alloc.create(Self);
-    self.content = std.DoublyLinkedList{};
-    self.arena = arena;
+    self.* = .{ .arena = arena };
     self.interface.ptr = self;
     return self;
 }
 
-pub fn eval(ptr: *anyopaque, _: Allocator, _: Expression.Context) Expression.Errors!Expression {
+pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
     const self: *Self = @ptrCast(@alignCast(ptr));
     return self.interface;
 }
@@ -68,11 +68,12 @@ pub fn head(self: *Self) ?Expression {
     return Item.from(self.headNode() orelse return null).content;
 }
 
-pub fn tail(self: *Self, parent: Allocator) ?*Self {
+pub fn tail(self: *Self, parent: Allocator) !?*Self {
+    if (self.len < 2) return null;
     const new = try self.clone(parent);
-    self.len -= 1;
+    new.len -= 1;
     const del = if (new.iter_order == .first_to_last) new.content.popFirst() else new.content.pop();
-    parent.destroy(Item.from(del));
+    parent.destroy(Item.from(del.?));
     return new;
 }
 
@@ -84,11 +85,44 @@ pub fn get(self: *Self, i: usize) ?Expression {
         return Item.from(current).content;
     }
     var current = if (self.iter_order == .first_to_last) self.content.last.? else self.content.first.?;
-    for (0..i) |_| current = if (self.iter_order == .first_to_last) current.prev.? else current.next.?;
+    for (i..self.len - 1) |_| current = if (self.iter_order == .first_to_last) current.prev.? else current.next.?;
     return Item.from(current).content;
 }
 
-const Item = struct {
+test {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const Number = Expression.Number;
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = try init(alloc);
+    for (0..5) |i| {
+        const nbr = try Number.init(alloc, i);
+        try l.append(nbr.interface);
+    }
+
+    const res = try l.interface.eval(alloc, &dummy);
+    try expect(res.typ == .list);
+    l = res.as(Self);
+
+    for (0..5) |i| try expect(l.get(i).?.as(Number).content == i);
+    var current = l;
+    for (0..5) |i| {
+        try expect(current.head().?.as(Number).content == i);
+        if (i != 4) current = (try current.tail(alloc)).? else try expect(try current.tail(alloc) == null);
+    }
+    const rev = try l.reverse(alloc);
+    for (0..5) |i| try expect(rev.get(i).?.as(Number).content == 4 - i);
+    current = rev;
+    for (0..5) |i| {
+        try expect(current.head().?.as(Number).content == 4 - i);
+        if (i != 4) current = (try current.tail(alloc)).? else try expect(try current.tail(alloc) == null);
+    }
+}
+
+pub const Item = struct {
     content: Expression,
     node: std.DoublyLinkedList.Node = .{},
 

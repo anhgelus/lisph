@@ -1,10 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
+const expect = std.testing.expect;
 
 const Self = @This();
 
-content: []Expression,
+content: []const Expression,
 interface: Expression = .{
     .ptr = undefined,
     .vtable = .{
@@ -13,38 +14,63 @@ interface: Expression = .{
     .typ = .string_composed,
 },
 
-pub fn init(alloc: Allocator, content: []Expression) !*Self {
+pub fn init(alloc: Allocator, content: []const Expression) !*Self {
     const self = try alloc.create(Self);
     self.* = .{ .content = content };
     self.interface.ptr = self;
     return self;
 }
 
-pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: Expression.Context) Expression.Errors!Expression {
+pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
     const self: *Self = @ptrCast(@alignCast(ptr));
     var content = try std.ArrayList(u8).initCapacity(alloc, self.content.len);
     for (self.content) |it| {
         const res = try it.eval(alloc, ctx);
         switch (res.typ) {
             .boolean => {
-                const b: *Expression.literal.Boolean = @ptrCast(@alignCast(res.ptr));
-                try content.appendSlice(alloc, if (b.content) "true" else "false");
+                try content.appendSlice(
+                    alloc,
+                    if (res.as(Expression.Boolean).content) "true" else "false",
+                );
             },
             .string_literal => {
-                const s: *Expression.literal.String = @ptrCast(@alignCast(res.ptr));
-                try content.appendSlice(alloc, s.content);
+                try content.appendSlice(alloc, res.as(Expression.String).content);
             },
             .number => {
-                const n: *Expression.literal.Number = @ptrCast(@alignCast(res.ptr));
-                const fmt = try std.fmt.allocPrint(alloc, "{}", .{n.content});
+                const fmt = try std.fmt.allocPrint(
+                    alloc,
+                    "{}",
+                    .{res.as(Expression.Number).content},
+                );
                 defer alloc.free(fmt);
                 try content.appendSlice(alloc, fmt);
             },
-            .evaluate => {},
-            .variable => {},
-            .list => {},
             else => return Expression.Errors.InvalidComposedStringContent,
         }
     }
-    return (try Expression.literal.String.init(alloc, try content.toOwnedSlice(alloc))).interface;
+    return (try Expression.String.init(alloc, try content.toOwnedSlice(alloc))).interface;
+}
+
+test {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var s = try init(alloc, &[_]Expression{
+        (try Expression.String.init(alloc, "hello")).interface,
+    });
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .string_literal);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "hello"));
+
+    s = try init(alloc, &[_]Expression{
+        (try Expression.String.init(alloc, "hey ")).interface,
+        (try Expression.Number.init(alloc, 123)).interface,
+        (try Expression.Boolean.init(alloc, true)).interface,
+    });
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .string_literal);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey 123true"));
 }

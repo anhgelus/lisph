@@ -23,20 +23,20 @@ pub fn parse(l: *Lexer, alloc: Allocator) Errors!Expression {
     };
 }
 
-pub fn parseBoolean(l: *Lexer, alloc: Allocator) !*Expression.literal.Boolean {
+pub fn parseBoolean(l: *Lexer, alloc: Allocator) !*Expression.Boolean {
     const tok = l.next().?;
-    return try Expression.literal.Boolean.init(alloc, std.mem.eql(u8, tok.content, "true"));
+    return try Expression.Boolean.init(alloc, std.mem.eql(u8, tok.content, "true"));
 }
 
-pub fn parseNumber(l: *Lexer, alloc: Allocator) !*Expression.literal.Number {
+pub fn parseNumber(l: *Lexer, alloc: Allocator) !*Expression.Number {
     const tok = l.next().?;
     const i = try std.fmt.parseUnsigned(u64, tok.content, 0);
-    return try Expression.literal.Number.init(alloc, i);
+    return try Expression.Number.init(alloc, i);
 }
 
-pub fn parseLiteralString(l: *Lexer, alloc: Allocator) !*Expression.literal.String {
+pub fn parseLiteralString(l: *Lexer, alloc: Allocator) !*Expression.String {
     const tok = l.next().?;
     if (l.next()) |it| if (it.kind != .separator) return Errors.InvalidString;
     l.consume();
-    return try Expression.literal.String.init(alloc, tok.content);
+    return try Expression.String.init(alloc, tok.content);
 }

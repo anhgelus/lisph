@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
+const expect = std.testing.expect;
 
 pub const String = struct {
     content: []const u8,
@@ -21,11 +22,29 @@ pub const String = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
         return self.interface;
     }
 };
+
+test "string" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var s = try String.init(alloc, "");
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .string_literal);
+    try expect(res.as(String).content.len == 0);
+
+    s = try String.init(alloc, "hello world");
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .string_literal);
+    try expect(std.mem.eql(u8, res.as(String).content, "hello world"));
+}
 
 pub const Number = struct {
     content: u64,
@@ -46,11 +65,29 @@ pub const Number = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
         return self.interface;
     }
 };
+
+test "number" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var s = try Number.init(alloc, 0);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .number);
+    try expect(res.as(Number).content == 0);
+
+    s = try Number.init(alloc, 2345678);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .number);
+    try expect(res.as(Number).content == 2345678);
+}
 
 pub const Boolean = struct {
     content: bool,
@@ -71,8 +108,26 @@ pub const Boolean = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
         return self.interface;
     }
 };
+
+test "boolean" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var s = try Boolean.init(alloc, false);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(!res.as(Boolean).content);
+
+    s = try Boolean.init(alloc, true);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Boolean).content);
+}

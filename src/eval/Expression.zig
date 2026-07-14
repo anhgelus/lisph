@@ -1,7 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 pub const function = @import("function.zig");
-pub const literal = @import("literal.zig");
+const literal = @import("literal.zig");
+pub const String = literal.String;
+pub const Boolean = literal.Boolean;
+pub const Number = literal.Number;
 pub const ComposedString = @import("ComposedString.zig");
 pub const List = @import("List.zig");
 pub const variable = @import("variable.zig");
@@ -39,15 +42,31 @@ pub const Type = enum {
 
 ptr: *anyopaque,
 vtable: struct {
-    eval: *const fn (*anyopaque, Allocator, Context) Errors!Expression,
+    eval: *const fn (*anyopaque, Allocator, *Context) Errors!Expression,
 },
 typ: Type,
 
-pub fn eval(self: Expression, alloc: Allocator, ctx: Context) Errors!Expression {
+pub fn eval(self: Expression, alloc: Allocator, ctx: *Context) Errors!Expression {
     return try self.vtable.eval(self.ptr, alloc, ctx);
+}
+
+pub inline fn as(self: Expression, comptime T: type) *T {
+    comptime {
+        if (@FieldType(T, "interface") != Expression)
+            @compileError(@typeName(T) ++ " is not an expression.");
+    }
+    const sub: *T = @ptrCast(@alignCast(self.ptr));
+    return sub;
 }
 
 pub const Context = struct {
     variables: std.StringHashMap(Expression),
     functions: std.StringHashMap(*function.Def),
+
+    pub fn init(alloc: Allocator) Context {
+        return .{
+            .functions = .init(alloc),
+            .variables = .init(alloc),
+        };
+    }
 };

@@ -40,8 +40,8 @@ pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {
                 l.consume();
                 break :iter;
             },
-            .variable, .boolean, .string_content, .separator, .number => try expression.parse(l, alloc),
-            else => return Errors.InvalidString,
+            .variable, .boolean, .string_content, .number => try expression.parse(l, alloc),
+            else => (try Expression.String.init(alloc, it.content)).interface,
         });
     }
     if (tok == null) return Errors.InvalidString;

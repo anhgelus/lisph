@@ -22,7 +22,7 @@ pub const Call = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, parent: Allocator, ctx: Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, parent: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
         const body = ctx.functions.get(self.name) orelse return Expression.Errors.UnknownFunction;
         var arena = std.heap.ArenaAllocator.init(parent);
@@ -35,8 +35,13 @@ pub const Call = struct {
         if (body.deconstruct_args) {
             if (body.args.len != self.args.len) return Expression.Errors.InvalidFunctionArguments;
             for (0.., body.args) |i, k| try sub.variables.put(k, self.args[i]);
-        } // TODO: create a list
-        return try body.eval(alloc, sub);
+        } else {
+            if (body.args.len != 1) @panic("internal invalid function definition");
+            const l = try Expression.List.init(alloc);
+            for (self.args) |arg| try l.append(arg);
+            try sub.variables.put(body.args[0], l.interface);
+        }
+        return try body.eval(alloc, &sub);
     }
 
     pub fn from(expr: Expression) Expression.Errors.InvalidCast!*Self {
@@ -62,7 +67,7 @@ pub const Def = struct {
         };
     }
 
-    pub fn eval(self: Self, alloc: Allocator, ctx: Expression.Context) Expression.Errors!Expression {
+    pub fn eval(self: Self, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
         return try self.body.eval(alloc, ctx);
     }
 };
