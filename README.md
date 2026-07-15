@@ -14,7 +14,7 @@ Lisph works like a POSIX Shell, but it's syntax is easier to learn and to use.
 Checking if `index.html` exists before starting a python webserver:
 ```lisp
 #!/usr/bin/lisph
-check (! (exists? "index.html"))
+check (not (exists? "index.html"))
   (do
     (echo "There is no index.html in this folder, exiting")
 	(exit 1))
@@ -35,7 +35,7 @@ Custom yt-dlp options:
 ```lisp
 #!/usr/bin/lisph
 
-defunc 
+defn 
   args-generator
   [args acc res]
   (if (= (len $args) 1)

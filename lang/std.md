@@ -58,7 +58,7 @@ are the logical operators.
 ```lisp
 (| a b)
 (& a b)
-(.^ a b)
+(^ a b)
 (~ a b)
 (<< a b)
 (>> a b)
