@@ -7,9 +7,9 @@ pub const Context = Expression.Context;
 const Script = struct {
     root: []Expression.Root,
 
-    pub fn run(self: @This(), alloc: std.mem.Allocator, ctx: Context) !void {
+    pub fn run(self: @This(), alloc: std.mem.Allocator, io: std.Io, ctx: *Context) !void {
         for (self.root) |it| {
-            try it.eval(alloc, ctx);
+            try it.eval(alloc, io, ctx);
         }
     }
 };

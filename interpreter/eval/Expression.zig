@@ -118,22 +118,25 @@ pub const Root = struct {
         var sub = Expression.Context{
             .functions = ctx.functions,
             .variables = try ctx.variables.cloneWithAllocator(alloc),
+            .environ = ctx.environ,
         };
-        const res = try self.expr.eval(alloc, &sub, io);
+        const res = try self.expr.eval(alloc, io, &sub);
         if (res.typ != .subprocess_finished) return;
 
         const result = res.as(Context.SubprocessFinished).content;
 
-        var writer = std.Io.File.stdout().writer(io, .{});
-        try writer.interface.writeAll(result.stdout);
-        try writer.flush();
+        var buf: [4096]u8 = undefined;
+        var writer = std.Io.File.stdout().writer(io, &buf);
+        writer.interface.writeAll(result.stdout) catch @panic("write failed to stdout");
+        writer.flush() catch @panic("cannot flush to stdout");
 
-        writer = std.Io.File.stderr().writer(io, .{});
-        try writer.interface.writeAll(result.stderr);
-        try writer.flush();
+        writer = std.Io.File.stderr().writer(io, &buf);
+        writer.interface.writeAll(result.stderr) catch @panic("write failed to stderr");
+        writer.flush() catch @panic("cannot flush to stderr");
 
         if (result.term.exited != 0) {
-            try writer.interface.print("Exit code: {}\n", .{result.term.exited});
+            writer.interface.print("Exit code: {}\n", .{result.term.exited}) catch @panic("exit code write failed to stderr");
+            writer.flush() catch @panic("cannot flush exit code to stderr");
         }
     }
 };

@@ -39,10 +39,9 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(exe);
 
     const test_step = b.step("test", "Run tests");
-    const exe_tests = b.addTest(.{
+    const run_tests = b.addRunArtifact(b.addTest(.{
         .root_module = interpreter_lib.root_module,
-    });
-    const run_tests = b.addRunArtifact(exe_tests);
+    }));
     test_step.dependOn(&run_tests.step);
 
     const check = b.step("check", "Check if it compiles");
