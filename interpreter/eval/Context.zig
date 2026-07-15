@@ -29,6 +29,17 @@ pub fn getFunction(self: @This(), alloc: Allocator, name: []const u8) !Expressio
     };
 }
 
+pub const Variable = union(enum) {
+    local: Expression,
+    environ: []const u8,
+};
+
+pub fn getVariable(self: @This(), key: []const u8) ?Variable {
+    if (self.variables.get(key)) |it| return Variable{ .local = it };
+    if (self.environ.get(key)) |it| return Variable{ .environ = it };
+    return null;
+}
+
 const Subprocess = struct {
     name: []const u8,
     arg_name: []const u8,
@@ -73,6 +84,17 @@ const Subprocess = struct {
             error.FileNotFound => return Expression.Errors.UnknownFunction,
             else => @panic(@errorName(err)),
         };
+        const status = try Expression.Number.init(parent, res.term.exited);
+        try ctx.variables.put("?", status.interface);
+        try ctx.variables.put("status", status.interface);
+        try ctx.variables.put(
+            "stdout",
+            (try Expression.String.init(parent, res.stdout)).interface,
+        );
+        try ctx.variables.put(
+            "stderr",
+            (try Expression.String.init(parent, res.stderr)).interface,
+        );
         return (try SubprocessFinished.init(parent, res)).interface;
     }
 };

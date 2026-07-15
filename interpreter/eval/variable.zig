@@ -24,8 +24,11 @@ pub const Variable = struct {
 
     pub fn eval(ptr: *anyopaque, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
-        const res = ctx.variables.get(self.name) orelse return Expression.Errors.UnknownVariable;
-        return try res.eval(alloc, io, ctx);
+        const res = ctx.getVariable(self.name) orelse return Expression.Errors.UnknownVariable;
+        return switch (res) {
+            .local => |expr| try expr.eval(alloc, io, ctx),
+            .environ => |env| (try Expression.String.init(alloc, env)).interface,
+        };
     }
 
     pub fn set(self: *Self, alloc: Allocator, io: std.Io, ctx: *Expression.Context, value: Expression) !void {

@@ -61,6 +61,10 @@ pub fn from(alloc: Allocator, expr: Expression, acc: *std.ArrayList(u8)) !void {
                 i += 1;
             }
         },
+        .subprocess_finished => {
+            const result = expr.as(Expression.Context.SubprocessFinished).content;
+            try acc.appendSlice(alloc, result.stdout);
+        },
         else => return Expression.Errors.InvalidComposedStringContent,
     }
 }
