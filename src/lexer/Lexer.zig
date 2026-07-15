@@ -15,10 +15,11 @@ pub const Kind = enum {
     variable_end,
     function_beg,
     function_end,
+    function_separator,
+    function_reference,
     list_beg,
     list_end,
     empty,
-    function_separator,
     separator,
 
     inline fn compatibleWith(self: @This(), kind: @This()) bool {
@@ -122,6 +123,7 @@ pub fn kindOf(rune: u8, before: ?Kind) Kind {
         '\n', ';' => .function_separator,
         ' ' => .separator,
         '"' => .string_delimiter,
+        '&' => .function_reference,
         '{' => if (before == null) .variable_beg else .string_content,
         '}' => if (before == null) .variable_end else .string_content,
         else => if ((rune <= '9' and rune >= '0') and (before == null or before.? == .number))

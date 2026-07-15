@@ -11,6 +11,7 @@ pub const Errors = error{
     InvalidString,
     InvalidVariable,
     InvalidEvaluate,
+    InvalidReference,
 };
 
 pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
@@ -28,7 +29,8 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
         try args.append(alloc, try expression.parse(l, alloc));
         if (!l.skipSeparator()) return Errors.InvalidFunction;
     }
-    return try Expression.Function.init(alloc, id, try args.toOwnedSlice(alloc));
+    const ref = try Expression.FunctionRef.init(alloc, id);
+    return try Expression.Function.init(alloc, ref, try args.toOwnedSlice(alloc));
 }
 
 pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {
@@ -121,7 +123,7 @@ test "list" {
     try expect(r.len == 1);
     try expect(r.content.first == r.content.last);
     var sub = Expression.List.Item.from(r.content.first.?);
-    try expect(sub.content.typ == .string_literal);
+    try expect(sub.content.typ == .string);
     try expect(std.mem.eql(u8, sub.content.as(Expression.String).content, "foo"));
 
     l = Lexer{ .iterator = .{ .bytes = "[foo 123]", .i = 0 } };
@@ -131,7 +133,7 @@ test "list" {
     try expect(r.len == 2);
     try expect(r.content.first != r.content.last);
     sub = Expression.List.Item.from(r.content.first.?);
-    try expect(sub.content.typ == .string_literal);
+    try expect(sub.content.typ == .string);
     try expect(std.mem.eql(u8, sub.content.as(Expression.String).content, "foo"));
     try expect(r.content.first.?.next == r.content.last);
     sub = Expression.List.Item.from(r.content.last.?);
@@ -163,4 +165,11 @@ pub fn parseVariable(l: *Lexer, alloc: Allocator) !Expression {
         if (tok.kind != .variable_end) return Errors.InvalidVariable;
     }
     return (try Expression.variable.Var.init(alloc, name)).interface;
+}
+
+pub fn parseFunctionReference(l: *Lexer, alloc: Allocator) !*Expression.FunctionRef {
+    l.consume();
+    const tok = l.next() orelse return Errors.InvalidReference;
+    if (!tok.is_identifier) return Errors.InvalidReference;
+    return try Expression.FunctionRef.init(alloc, tok.content);
 }

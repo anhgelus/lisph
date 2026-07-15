@@ -50,7 +50,7 @@ test "var eval" {
 
     var v = try Var.init(alloc, "foo");
     var res = try v.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
     v = try Var.init(alloc, "bar");
@@ -70,7 +70,7 @@ test "var set" {
     var v = try Var.init(alloc, "foo");
     try v.set(alloc, &dummy, (try Expression.String.init(alloc, "bar")).interface);
     var res = try v.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
     v = try Var.init(alloc, "foo");

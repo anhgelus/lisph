@@ -14,6 +14,7 @@ pub fn parse(l: *Lexer, alloc: Allocator) Errors!Expression {
     const tok = l.peek() orelse return Errors.InvalidExpression;
     return switch (tok.kind) {
         .function_beg => (try composed.parseFunction(l, alloc)).interface,
+        .function_reference => (try composed.parseFunctionReference(l, alloc)).interface,
         .boolean => (try parseBoolean(l, alloc)).interface,
         .number => (try parseNumber(l, alloc)).interface,
         .string_delimiter => (try composed.parseString(l, alloc)).interface,

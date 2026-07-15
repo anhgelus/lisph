@@ -11,7 +11,7 @@ interface: Expression = .{
     .vtable = .{
         .eval = eval,
     },
-    .typ = .string_composed,
+    .typ = .string,
 },
 
 pub fn init(alloc: Allocator, content: []const Expression) !*Self {
@@ -33,7 +33,7 @@ pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: *Expression.Context) Express
                     if (res.as(Expression.Boolean).content) "true" else "false",
                 );
             },
-            .string_literal => {
+            .string => {
                 try content.appendSlice(alloc, res.as(Expression.String).content);
             },
             .number => {
@@ -62,7 +62,7 @@ test {
         (try Expression.String.init(alloc, "hello")).interface,
     });
     var res = try s.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hello"));
 
     s = try init(alloc, &[_]Expression{
@@ -71,6 +71,6 @@ test {
         (try Expression.Boolean.init(alloc, true)).interface,
     });
     res = try s.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey 123true"));
 }

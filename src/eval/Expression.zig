@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 const function = @import("function.zig");
 pub const Function = function.Call;
 pub const FunctionDef = function.Def;
+pub const FunctionRef = function.Ref;
 const literal = @import("literal.zig");
 pub const String = literal.String;
 pub const Boolean = literal.Boolean;
@@ -26,9 +27,9 @@ pub const Type = enum {
     variable,
     evaluate,
     boolean,
-    string_literal,
-    string_composed,
+    string,
     list,
+    reference,
 
     pub inline fn name(t: Type) []const u8 {
         return switch (t) {
@@ -36,7 +37,7 @@ pub const Type = enum {
             .number => "number",
             .variable, .evaluate => "unknown",
             .boolean => "boolean",
-            .string_literal, .string_composed => "string",
+            .string, .string_composed => "string",
             .list => "list",
         };
     }

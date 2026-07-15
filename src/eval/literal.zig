@@ -10,7 +10,7 @@ pub const String = struct {
         .vtable = .{
             .eval = eval,
         },
-        .typ = .string_literal,
+        .typ = .string,
     },
 
     const Self = @This();
@@ -37,12 +37,12 @@ test "string" {
 
     var s = try String.init(alloc, "");
     var res = try s.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(res.as(String).content.len == 0);
 
     s = try String.init(alloc, "hello world");
     res = try s.interface.eval(alloc, &dummy);
-    try expect(res.typ == .string_literal);
+    try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(String).content, "hello world"));
 }
 
