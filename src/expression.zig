@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 const Lexer = @import("lexer/Lexer.zig");
 const composed = @import("composed.zig");
 const Expression = @import("eval/Expression.zig");
+const expect = std.testing.expect;
 
 pub const Errors = error{
     InvalidExpression,
@@ -28,15 +29,80 @@ pub fn parseBoolean(l: *Lexer, alloc: Allocator) !*Expression.Boolean {
     return try Expression.Boolean.init(alloc, std.mem.eql(u8, tok.content, "true"));
 }
 
+test "boolean" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "true", .i = 0 } };
+    _ = l.peek();
+    var s = try parseBoolean(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "false", .i = 0 } };
+    _ = l.peek();
+    s = try parseBoolean(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(!res.as(Expression.Boolean).content);
+}
+
 pub fn parseNumber(l: *Lexer, alloc: Allocator) !*Expression.Number {
     const tok = l.next().?;
     const i = try std.fmt.parseUnsigned(u64, tok.content, 0);
     return try Expression.Number.init(alloc, i);
 }
 
+test "number" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "0", .i = 0 } };
+    _ = l.peek();
+    var s = try parseNumber(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.as(Expression.Number).content == 0);
+
+    l = Lexer{ .iterator = .{ .bytes = "10", .i = 0 } };
+    _ = l.peek();
+    s = try parseNumber(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.as(Expression.Number).content == 10);
+
+    l = Lexer{ .iterator = .{ .bytes = "6234567", .i = 0 } };
+    _ = l.peek();
+    s = try parseNumber(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(res.as(Expression.Number).content == 6234567);
+}
+
 pub fn parseLiteralString(l: *Lexer, alloc: Allocator) !*Expression.String {
     const tok = l.next().?;
-    if (l.next()) |it| if (it.kind != .separator) return Errors.InvalidString;
-    l.consume();
+    //if (l.peek()) |it| if (it.kind != .separator) return Errors.InvalidString;
     return try Expression.String.init(alloc, tok.content);
+}
+
+test "string" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "hey", .i = 0 } };
+    _ = l.peek();
+    var s = try parseLiteralString(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey"));
+
+    l = Lexer{ .iterator = .{ .bytes = "hello_world-éè ", .i = 0 } };
+    _ = l.peek().?;
+    s = try parseLiteralString(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "hello_world-éè"));
 }

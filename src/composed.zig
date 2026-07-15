@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 const Lexer = @import("lexer/Lexer.zig");
 const expression = @import("expression.zig");
 const Expression = @import("eval/Expression.zig");
+const expect = std.testing.expect;
 
 pub const Errors = error{
     InvalidFunction,
@@ -32,33 +33,110 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.function.Call {
 
 pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {
     l.consume();
-    var tok = l.peek();
     var content = try std.ArrayList(Expression).initCapacity(alloc, 2);
+    var tok = l.peek();
     iter: while (tok) |it| : (tok = l.peek()) {
         try content.append(alloc, switch (it.kind) {
             .string_delimiter => {
                 l.consume();
                 break :iter;
             },
-            .variable, .boolean, .string_content, .number => try expression.parse(l, alloc),
-            else => (try Expression.String.init(alloc, it.content)).interface,
+            .variable, .boolean, .number => try expression.parse(l, alloc),
+            else => brk: {
+                l.consume();
+                break :brk (try Expression.String.init(alloc, it.content)).interface;
+            },
         });
     }
     if (tok == null) return Errors.InvalidString;
     return try Expression.ComposedString.init(alloc, try content.toOwnedSlice(alloc));
 }
 
+test "string" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "\"hey\"", .i = 0 } };
+    _ = l.peek();
+    var s = try parseString(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey"));
+
+    l = Lexer{ .iterator = .{ .bytes = "\"123 hey\"", .i = 0 } };
+    _ = l.peek();
+    s = try parseString(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "123 hey"));
+
+    l = Lexer{ .iterator = .{ .bytes = "\"[] () hehe\"", .i = 0 } };
+    _ = l.peek();
+    s = try parseString(&l, alloc);
+    res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "[] () hehe"));
+
+    l = Lexer{ .iterator = .{ .bytes = "\"invalid", .i = 0 } };
+    _ = l.peek();
+    try std.testing.expectError(
+        Errors.InvalidString,
+        parseString(&l, alloc),
+    );
+
+    //TODO: missing verifying escape
+}
+
 pub fn parseList(l: *Lexer, alloc: Allocator) !*Expression.List {
     l.consume();
     const list = try Expression.List.init(alloc);
-    var tok = l.next();
-    while (tok) |it| : (tok = l.next()) {
+    var tok = l.peek();
+    while (tok) |it| : (tok = l.peek()) {
         if (it.kind == .list_end) break;
         try list.append(try expression.parse(l, alloc));
         if (!l.skipSeparator()) if (l.peek()) |p| if (p.kind != .list_end) return Errors.InvalidList;
     }
     if (tok == null) return Errors.InvalidList;
+    l.consume();
     return list;
+}
+
+test "list" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "[]", .i = 0 } };
+    _ = l.peek();
+    var s = try parseList(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(res.as(Expression.List).len == 0);
+
+    l = Lexer{ .iterator = .{ .bytes = "[foo]", .i = 0 } };
+    _ = l.peek();
+    s = try parseList(&l, alloc);
+    var r = (try s.interface.eval(alloc, &dummy)).as(Expression.List);
+    try expect(r.len == 1);
+    try expect(r.content.first == r.content.last);
+    var sub = Expression.List.Item.from(r.content.first.?);
+    try expect(sub.content.typ == .string_literal);
+    try expect(std.mem.eql(u8, sub.content.as(Expression.String).content, "foo"));
+
+    l = Lexer{ .iterator = .{ .bytes = "[foo 123]", .i = 0 } };
+    _ = l.peek();
+    s = try parseList(&l, alloc);
+    r = (try s.interface.eval(alloc, &dummy)).as(Expression.List);
+    try expect(r.len == 2);
+    try expect(r.content.first != r.content.last);
+    sub = Expression.List.Item.from(r.content.first.?);
+    try expect(sub.content.typ == .string_literal);
+    try expect(std.mem.eql(u8, sub.content.as(Expression.String).content, "foo"));
+    try expect(r.content.first.?.next == r.content.last);
+    sub = Expression.List.Item.from(r.content.last.?);
+    try expect(sub.content.typ == .number);
+    try expect(sub.content.as(Expression.Number).content == 123);
 }
 
 pub fn parseVariable(l: *Lexer, alloc: Allocator) !Expression {
