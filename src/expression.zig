@@ -34,17 +34,18 @@ test "boolean" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "true", .i = 0 } };
     var s = try parseBoolean(&l, alloc);
-    var res = try s.interface.eval(alloc, &dummy);
+    var res = try s.interface.eval(alloc, io, &dummy);
     try expect(res.as(Expression.Boolean).content);
 
     l = Lexer{ .iterator = .{ .bytes = "false", .i = 0 } };
     s = try parseBoolean(&l, alloc);
-    res = try s.interface.eval(alloc, &dummy);
+    res = try s.interface.eval(alloc, io, &dummy);
     try expect(!res.as(Expression.Boolean).content);
 }
 
@@ -58,22 +59,23 @@ test "number" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "0", .i = 0 } };
     var s = try parseNumber(&l, alloc);
-    var res = try s.interface.eval(alloc, &dummy);
+    var res = try s.interface.eval(alloc, io, &dummy);
     try expect(res.as(Expression.Number).content == 0);
 
     l = Lexer{ .iterator = .{ .bytes = "10", .i = 0 } };
     s = try parseNumber(&l, alloc);
-    res = try s.interface.eval(alloc, &dummy);
+    res = try s.interface.eval(alloc, io, &dummy);
     try expect(res.as(Expression.Number).content == 10);
 
     l = Lexer{ .iterator = .{ .bytes = "6234567", .i = 0 } };
     s = try parseNumber(&l, alloc);
-    res = try s.interface.eval(alloc, &dummy);
+    res = try s.interface.eval(alloc, io, &dummy);
     try expect(res.as(Expression.Number).content == 6234567);
 }
 
@@ -87,16 +89,17 @@ test "string" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "hey", .i = 0 } };
     var s = try parseLiteralString(&l, alloc);
-    var res = try s.interface.eval(alloc, &dummy);
+    var res = try s.interface.eval(alloc, io, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey"));
 
     l = Lexer{ .iterator = .{ .bytes = "hello_world-éè ", .i = 0 } };
     s = try parseLiteralString(&l, alloc);
-    res = try s.interface.eval(alloc, &dummy);
+    res = try s.interface.eval(alloc, io, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hello_world-éè"));
 }

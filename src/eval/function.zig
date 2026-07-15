@@ -23,9 +23,9 @@ pub const Call = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
-        const body = ctx.functions.get(self.ref.content) orelse return Expression.Errors.UnknownFunction;
+        const body = try ctx.getFunction(alloc, self.ref.content);
         if (body.deconstruct_args) {
             if (body.args.len != self.args.len) return Expression.Errors.InvalidFunctionArguments;
             for (0.., body.args) |i, k| try ctx.variables.put(k, self.args[i]);
@@ -35,7 +35,7 @@ pub const Call = struct {
             for (self.args) |arg| try l.append(arg);
             try ctx.variables.put(body.args[0], l.interface);
         }
-        return try body.eval(alloc, ctx);
+        return try body.eval(alloc, io, ctx);
     }
 
     pub fn from(expr: Expression) Expression.Errors.InvalidCast!*Self {
@@ -48,8 +48,9 @@ test "call" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var f = try Def.init(
         &[_][]const u8{"args"},
@@ -60,7 +61,7 @@ test "call" {
     const ref = try Ref.init(alloc, "foo");
 
     var c = try Call.init(alloc, ref, &[_]Expression{});
-    var res = try c.interface.eval(alloc, &dummy);
+    var res = try c.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .reference);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "uwu"));
 
@@ -75,7 +76,7 @@ test "call" {
         ref,
         &[_]Expression{(try Expression.Number.init(alloc, 0)).interface},
     );
-    res = try c.interface.eval(alloc, &dummy);
+    res = try c.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .number);
     try expect(res.as(Expression.Number).content == 0);
 
@@ -84,7 +85,7 @@ test "call" {
         ref,
         &[_]Expression{(try Expression.Boolean.init(alloc, true)).interface},
     );
-    res = try c.interface.eval(alloc, &dummy);
+    res = try c.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .boolean);
     try expect(res.as(Expression.Boolean).content == true);
 }
@@ -104,8 +105,8 @@ pub const Def = struct {
         };
     }
 
-    pub fn eval(self: Self, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
-        return try self.body.eval(alloc, ctx);
+    pub fn eval(self: Self, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
+        return try self.body.eval(alloc, io, ctx);
     }
 };
 
@@ -113,15 +114,16 @@ test "def_ref" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var s = try Def.init(
         &[_][]const u8{},
         false,
         (try Ref.init(alloc, "uwu")).interface,
     );
-    var res = try s.eval(alloc, &dummy);
+    var res = try s.eval(alloc, io, &dummy);
     try expect(res.typ == .reference);
     try expect(std.mem.eql(u8, res.as(Ref).content, "uwu"));
 }

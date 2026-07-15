@@ -26,7 +26,7 @@ pub fn init(parent: Allocator) !*Self {
     return self;
 }
 
-pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
+pub fn eval(ptr: *anyopaque, _: Allocator, _: std.Io, _: *Expression.Context) Expression.Errors!Expression {
     const self: *Self = @ptrCast(@alignCast(ptr));
     return self.interface;
 }
@@ -94,8 +94,9 @@ test {
     defer arena.deinit();
     const alloc = arena.allocator();
     const Number = Expression.Number;
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var l = try init(alloc);
     for (0..5) |i| {
@@ -103,7 +104,7 @@ test {
         try l.append(nbr.interface);
     }
 
-    const res = try l.interface.eval(alloc, &dummy);
+    const res = try l.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .list);
     l = res.as(Self);
 

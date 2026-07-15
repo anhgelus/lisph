@@ -13,6 +13,7 @@ pub const List = @import("List.zig");
 const variable = @import("variable.zig");
 pub const Variable = variable.Variable;
 pub const Evaluate = variable.Evaluate;
+pub const Context = @import("Context.zig");
 const Expression = @This();
 
 pub const Errors = error{
@@ -25,7 +26,6 @@ pub const Errors = error{
 
 pub fn isInternalError(err: Errors) bool {
     return switch (err) {
-        Errors.InvalidComposedStringContent => true,
         Allocator.Error => true,
         else => false,
     };
@@ -40,6 +40,7 @@ pub const Type = enum {
     string,
     list,
     reference,
+    subprocess_finished,
 
     pub inline fn name(t: Type) []const u8 {
         return switch (t) {
@@ -55,12 +56,12 @@ pub const Type = enum {
 
 ptr: *anyopaque,
 vtable: struct {
-    eval: *const fn (*anyopaque, Allocator, *Context) Errors!Expression,
+    eval: *const fn (*anyopaque, Allocator, std.Io, *Context) Errors!Expression,
 },
 typ: Type,
 
-pub fn eval(self: Expression, alloc: Allocator, ctx: *Context) Errors!Expression {
-    return try self.vtable.eval(self.ptr, alloc, ctx);
+pub fn eval(self: Expression, alloc: Allocator, io: std.Io, ctx: *Context) Errors!Expression {
+    return try self.vtable.eval(self.ptr, alloc, io, ctx);
 }
 
 pub inline fn as(self: Expression, comptime T: type) *T {
@@ -71,18 +72,6 @@ pub inline fn as(self: Expression, comptime T: type) *T {
     const sub: *T = @ptrCast(@alignCast(self.ptr));
     return sub;
 }
-
-pub const Context = struct {
-    variables: std.StringHashMap(Expression),
-    functions: std.StringHashMap(*function.Def),
-
-    pub fn init(alloc: Allocator) Context {
-        return .{
-            .functions = .init(alloc),
-            .variables = .init(alloc),
-        };
-    }
-};
 
 pub fn Literal(comptime V: type, comptime t: Type) type {
     return struct {
@@ -105,7 +94,7 @@ pub fn Literal(comptime V: type, comptime t: Type) type {
             return self;
         }
 
-        pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
+        pub fn eval(ptr: *anyopaque, _: Allocator, _: std.Io, _: *Expression.Context) Expression.Errors!Expression {
             const self: *Self = @ptrCast(@alignCast(ptr));
             return self.interface;
         }
@@ -122,7 +111,7 @@ pub const Root = struct {
 
     const Self = @This();
 
-    pub fn eval(self: Root, parent: Allocator, ctx: *Expression.Context) Expression.Errors!void {
+    pub fn eval(self: Root, parent: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!void {
         var arena = std.heap.ArenaAllocator.init(parent);
         defer arena.deinit();
         const alloc = arena.allocator();
@@ -130,6 +119,21 @@ pub const Root = struct {
             .functions = ctx.functions,
             .variables = try ctx.variables.cloneWithAllocator(alloc),
         };
-        _ = try self.expr.eval(alloc, &sub);
+        const res = try self.expr.eval(alloc, &sub, io);
+        if (res.typ != .subprocess_finished) return;
+
+        const result = res.as(Context.SubprocessFinished).content;
+
+        var writer = std.Io.File.stdout().writer(io, .{});
+        try writer.interface.writeAll(result.stdout);
+        try writer.flush();
+
+        writer = std.Io.File.stderr().writer(io, .{});
+        try writer.interface.writeAll(result.stderr);
+        try writer.flush();
+
+        if (result.term.exited != 0) {
+            try writer.interface.print("Exit code: {}\n", .{result.term.exited});
+        }
     }
 };

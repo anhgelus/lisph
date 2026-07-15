@@ -22,20 +22,20 @@ pub const Variable = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
         const res = ctx.variables.get(self.name) orelse return Expression.Errors.UnknownVariable;
-        return try res.eval(alloc, ctx);
+        return try res.eval(alloc, io, ctx);
     }
 
-    pub fn set(self: *Self, alloc: Allocator, ctx: *Expression.Context, value: Expression) !void {
+    pub fn set(self: *Self, alloc: Allocator, io: std.Io, ctx: *Expression.Context, value: Expression) !void {
         var res: ?Expression = null;
         if (!ctx.variables.contains(self.name)) {
-            res = try value.eval(alloc, ctx);
+            res = try value.eval(alloc, io, ctx);
             self.interface.typ = res.?.typ;
         }
         if (self.interface.typ != value.typ) return Expression.Errors.InvalidCast;
-        if (res == null) res = try value.eval(alloc, ctx);
+        if (res == null) res = try value.eval(alloc, io, ctx);
         try ctx.variables.put(self.name, res.?);
     }
 };
@@ -44,19 +44,20 @@ test "var eval" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
     try dummy.variables.put("foo", (try Expression.String.init(alloc, "bar")).interface);
 
     var v = try Variable.init(alloc, "foo");
-    var res = try v.interface.eval(alloc, &dummy);
+    var res = try v.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
     v = try Variable.init(alloc, "bar");
     try std.testing.expectError(
         Expression.Errors.UnknownVariable,
-        v.interface.eval(alloc, &dummy),
+        v.interface.eval(alloc, io, &dummy),
     );
 }
 
@@ -64,19 +65,20 @@ test "var set" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
+    const io = std.testing.io;
 
-    var dummy = Expression.Context.init(alloc);
+    var dummy = Expression.Context.dummy(alloc);
 
     var v = try Variable.init(alloc, "foo");
-    try v.set(alloc, &dummy, (try Expression.String.init(alloc, "bar")).interface);
-    var res = try v.interface.eval(alloc, &dummy);
+    try v.set(alloc, io, &dummy, (try Expression.String.init(alloc, "bar")).interface);
+    var res = try v.interface.eval(alloc, io, &dummy);
     try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
     v = try Variable.init(alloc, "foo");
     try std.testing.expectError(
         Expression.Errors.InvalidCast,
-        v.set(alloc, &dummy, (try Expression.Number.init(alloc, 0)).interface),
+        v.set(alloc, io, &dummy, (try Expression.Number.init(alloc, 0)).interface),
     );
 }
 
@@ -99,8 +101,8 @@ pub const Evaluate = struct {
         return self;
     }
 
-    pub fn eval(ptr: *anyopaque, alloc: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
+    pub fn eval(ptr: *anyopaque, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
-        return try self.call.interface.eval(alloc, ctx);
+        return try self.call.interface.eval(alloc, io, ctx);
     }
 };
