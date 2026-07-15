@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
 const expect = std.testing.expect;
 
-pub const Var = struct {
+pub const Variable = struct {
     name: []const u8,
     interface: Expression = .{
         .ptr = undefined,

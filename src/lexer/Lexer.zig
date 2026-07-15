@@ -72,7 +72,10 @@ pub fn next(self: *Self) ?Token {
             }
         }
         const next_rune = self.iterator.peek(1);
-        if (next_rune.len == 0) break :iter;
+        if (next_rune.len == 0) {
+            is_identifier = current_kind == .string_content;
+            break :iter;
+        }
         const next_kind: Kind = if (next_rune.len == 1)
             kindOf(next_rune[0], current_kind)
         else

@@ -10,7 +10,9 @@ pub const Boolean = literal.Boolean;
 pub const Number = literal.Number;
 pub const ComposedString = @import("ComposedString.zig");
 pub const List = @import("List.zig");
-pub const variable = @import("variable.zig");
+const variable = @import("variable.zig");
+pub const Variable = variable.Variable;
+pub const Evaluate = variable.Evaluate;
 const Expression = @This();
 
 pub const Errors = error{
