@@ -99,5 +99,10 @@ pub fn Literal(comptime V: type, comptime t: Type) type {
             const self: *Self = @ptrCast(@alignCast(ptr));
             return self.interface;
         }
+
+        pub fn from(expr: Expression) Expression.Errors.InvalidCast!*Self {
+            if (expr.typ != t) return Expression.Errors.InvalidCast;
+            return @ptrCast(@alignCast(expr.ptr));
+        }
     };
 }

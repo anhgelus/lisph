@@ -1,10 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
+const expect = std.testing.expect;
 
 pub const Call = struct {
     ref: *Ref,
-    args: []Expression,
+    args: []const Expression,
     interface: Expression = .{
         .ptr = undefined,
         .vtable = .{
@@ -15,7 +16,7 @@ pub const Call = struct {
 
     const Self = @This();
 
-    pub fn init(alloc: Allocator, ref: *Ref, args: []Expression) !*Self {
+    pub fn init(alloc: Allocator, ref: *Ref, args: []const Expression) !*Self {
         const self = try alloc.create(Self);
         self.* = .{ .ref = ref, .args = args };
         self.interface.ptr = self;
@@ -50,17 +51,60 @@ pub const Call = struct {
     }
 };
 
+test "call" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var f = try Def.init(
+        &[_][]const u8{"args"},
+        false,
+        (try Ref.init(alloc, "uwu")).interface,
+    );
+    try dummy.functions.put("foo", &f);
+    const ref = try Ref.init(alloc, "foo");
+
+    var c = try Call.init(alloc, ref, &[_]Expression{});
+    var res = try c.interface.eval(alloc, &dummy);
+    try expect(res.typ == .reference);
+    try expect(std.mem.eql(u8, res.as(Expression.String).content, "uwu"));
+
+    f = try Def.init(
+        &[_][]const u8{"val"},
+        true,
+        (try Expression.variable.Var.init(alloc, "val")).interface,
+    );
+
+    c = try Call.init(
+        alloc,
+        ref,
+        &[_]Expression{(try Expression.Number.init(alloc, 0)).interface},
+    );
+    res = try c.interface.eval(alloc, &dummy);
+    try expect(res.typ == .number);
+    try expect(res.as(Expression.Number).content == 0);
+
+    c = try Call.init(
+        alloc,
+        ref,
+        &[_]Expression{(try Expression.Boolean.init(alloc, true)).interface},
+    );
+    res = try c.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content == true);
+}
+
 pub const Def = struct {
-    name: []const u8,
-    args: [][]const u8,
+    args: []const []const u8,
     deconstruct_args: bool,
     body: Expression,
 
     const Self = @This();
 
-    pub fn init(name: []const u8, args: [][]const u8, deconstruct_args: bool, body: Expression) !Self {
+    pub fn init(args: []const []const u8, deconstruct_args: bool, body: Expression) !Self {
         return .{
-            .name = name,
             .args = args,
             .deconstruct_args = deconstruct_args,
             .body = body,
@@ -71,5 +115,22 @@ pub const Def = struct {
         return try self.body.eval(alloc, ctx);
     }
 };
+
+test "def_ref" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var s = try Def.init(
+        &[_][]const u8{},
+        false,
+        (try Ref.init(alloc, "uwu")).interface,
+    );
+    var res = try s.eval(alloc, &dummy);
+    try expect(res.typ == .reference);
+    try expect(std.mem.eql(u8, res.as(Ref).content, "uwu"));
+}
 
 pub const Ref = Expression.Literal([]const u8, .reference);
