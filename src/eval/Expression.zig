@@ -106,3 +106,20 @@ pub fn Literal(comptime V: type, comptime t: Type) type {
         }
     };
 }
+
+pub const Root = struct {
+    expr: Expression,
+
+    const Self = @This();
+
+    pub fn eval(self: Root, parent: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
+        var arena = std.heap.ArenaAllocator.init(parent);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+        var sub = Expression.Context{
+            .functions = ctx.functions,
+            .variables = try ctx.variables.cloneWithAllocator(alloc),
+        };
+        return try self.expr.eval(alloc, &sub);
+    }
+};
