@@ -1,10 +1,17 @@
 const std = @import("std");
 const Lexer = @import("lexer/Lexer.zig");
-const Expression = @import("eval/Expression.zig");
+pub const Expression = @import("eval/Expression.zig");
 const composed = @import("composed.zig");
+pub const Context = Expression.Context;
 
 const Script = struct {
     root: []Expression.Root,
+
+    pub fn run(self: @This(), alloc: std.mem.Allocator, ctx: Context) !void {
+        for (self.root) |it| {
+            try it.eval(alloc, ctx);
+        }
+    }
 };
 
 pub fn parse(alloc: std.mem.Allocator, content: []const u8) !Script {
@@ -17,12 +24,7 @@ pub fn parse(alloc: std.mem.Allocator, content: []const u8) !Script {
         const expr = try composed.parseFunction(&lexer, alloc);
         try root.append(alloc, .{ .expr = expr.interface });
     }
-    _ = lexer.next();
     return .{ .root = try root.toOwnedSlice(alloc) };
-}
-
-pub fn evaluate(_: std.mem.Allocator, s: Script) void {
-    _ = s;
 }
 
 test {

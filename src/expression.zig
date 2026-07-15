@@ -14,7 +14,7 @@ pub fn parse(l: *Lexer, alloc: Allocator) Errors!Expression {
     const tok = l.peek() orelse return Errors.InvalidExpression;
     return switch (tok.kind) {
         .function_beg => (try composed.parseFunction(l, alloc)).interface,
-        .function_reference => (try composed.parseFunctionReference(l, alloc)).interface,
+        .reference => (try composed.parseReference(l, alloc)).interface,
         .boolean => (try parseBoolean(l, alloc)).interface,
         .number => (try parseNumber(l, alloc)).interface,
         .string_delimiter => (try composed.parseString(l, alloc)).interface,
@@ -38,13 +38,11 @@ test "boolean" {
     var dummy = Expression.Context.init(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "true", .i = 0 } };
-    _ = l.peek();
     var s = try parseBoolean(&l, alloc);
     var res = try s.interface.eval(alloc, &dummy);
     try expect(res.as(Expression.Boolean).content);
 
     l = Lexer{ .iterator = .{ .bytes = "false", .i = 0 } };
-    _ = l.peek();
     s = try parseBoolean(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(!res.as(Expression.Boolean).content);
@@ -64,19 +62,16 @@ test "number" {
     var dummy = Expression.Context.init(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "0", .i = 0 } };
-    _ = l.peek();
     var s = try parseNumber(&l, alloc);
     var res = try s.interface.eval(alloc, &dummy);
     try expect(res.as(Expression.Number).content == 0);
 
     l = Lexer{ .iterator = .{ .bytes = "10", .i = 0 } };
-    _ = l.peek();
     s = try parseNumber(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(res.as(Expression.Number).content == 10);
 
     l = Lexer{ .iterator = .{ .bytes = "6234567", .i = 0 } };
-    _ = l.peek();
     s = try parseNumber(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(res.as(Expression.Number).content == 6234567);
@@ -96,13 +91,11 @@ test "string" {
     var dummy = Expression.Context.init(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "hey", .i = 0 } };
-    _ = l.peek();
     var s = try parseLiteralString(&l, alloc);
     var res = try s.interface.eval(alloc, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey"));
 
     l = Lexer{ .iterator = .{ .bytes = "hello_world-éè ", .i = 0 } };
-    _ = l.peek().?;
     s = try parseLiteralString(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hello_world-éè"));

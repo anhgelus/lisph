@@ -30,7 +30,7 @@ pub const Call = struct {
             if (body.args.len != self.args.len) return Expression.Errors.InvalidFunctionArguments;
             for (0.., body.args) |i, k| try ctx.variables.put(k, self.args[i]);
         } else {
-            if (body.args.len != 1) @panic("internal invalid function definition");
+            std.debug.assert(body.args.len == 1);
             const l = try Expression.List.init(alloc);
             for (self.args) |arg| try l.append(arg);
             try ctx.variables.put(body.args[0], l.interface);
@@ -67,7 +67,7 @@ test "call" {
     f = try Def.init(
         &[_][]const u8{"val"},
         true,
-        (try Expression.variable.Var.init(alloc, "val")).interface,
+        (try Expression.Variable.init(alloc, "val")).interface,
     );
 
     c = try Call.init(

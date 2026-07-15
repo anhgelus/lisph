@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const function = @import("function.zig");
 pub const Function = function.Call;
 pub const FunctionDef = function.Def;
-pub const FunctionRef = function.Ref;
+pub const Reference = function.Ref;
 const literal = @import("literal.zig");
 pub const String = literal.String;
 pub const Boolean = literal.Boolean;
@@ -20,8 +20,16 @@ pub const Errors = error{
     UnknownFunction,
     UnknownVariable,
     InvalidFunctionArguments,
-    InvalidComposedStringContent, // this is an internal error
+    InvalidComposedStringContent,
 } || Allocator.Error;
+
+pub fn isInternalError(err: Errors) bool {
+    return switch (err) {
+        Errors.InvalidComposedStringContent => true,
+        Allocator.Error => true,
+        else => false,
+    };
+}
 
 pub const Type = enum {
     function,
@@ -114,7 +122,7 @@ pub const Root = struct {
 
     const Self = @This();
 
-    pub fn eval(self: Root, parent: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
+    pub fn eval(self: Root, parent: Allocator, ctx: *Expression.Context) Expression.Errors!void {
         var arena = std.heap.ArenaAllocator.init(parent);
         defer arena.deinit();
         const alloc = arena.allocator();
@@ -122,6 +130,6 @@ pub const Root = struct {
             .functions = ctx.functions,
             .variables = try ctx.variables.cloneWithAllocator(alloc),
         };
-        return try self.expr.eval(alloc, &sub);
+        _ = try self.expr.eval(alloc, &sub);
     }
 };

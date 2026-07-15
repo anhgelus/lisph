@@ -48,12 +48,12 @@ test "var eval" {
     var dummy = Expression.Context.init(alloc);
     try dummy.variables.put("foo", (try Expression.String.init(alloc, "bar")).interface);
 
-    var v = try Var.init(alloc, "foo");
+    var v = try Variable.init(alloc, "foo");
     var res = try v.interface.eval(alloc, &dummy);
     try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
-    v = try Var.init(alloc, "bar");
+    v = try Variable.init(alloc, "bar");
     try std.testing.expectError(
         Expression.Errors.UnknownVariable,
         v.interface.eval(alloc, &dummy),
@@ -67,13 +67,13 @@ test "var set" {
 
     var dummy = Expression.Context.init(alloc);
 
-    var v = try Var.init(alloc, "foo");
+    var v = try Variable.init(alloc, "foo");
     try v.set(alloc, &dummy, (try Expression.String.init(alloc, "bar")).interface);
     var res = try v.interface.eval(alloc, &dummy);
     try expect(res.typ == .string);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "bar"));
 
-    v = try Var.init(alloc, "foo");
+    v = try Variable.init(alloc, "foo");
     try std.testing.expectError(
         Expression.Errors.InvalidCast,
         v.set(alloc, &dummy, (try Expression.Number.init(alloc, 0)).interface),

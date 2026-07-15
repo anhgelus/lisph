@@ -21,16 +21,86 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
     if (!tok.is_identifier) return Errors.InvalidFunction;
     const id = tok.content;
     var args = try std.ArrayList(Expression).initCapacity(alloc, 2);
-    tok = l.next() orelse return Errors.InvalidFunction;
-    if (tok.kind != .separator) return Errors.InvalidFunction;
-    while (l.next()) |it| {
-        if (hard_finish and it.kind == .function_end) break;
-        if (!hard_finish and it.kind == .function_separator and it.content.len >= 2) break;
-        try args.append(alloc, try expression.parse(l, alloc));
-        if (!l.skipSeparator()) return Errors.InvalidFunction;
+    const ctok = l.next();
+    if (ctok) |t| {
+        if (t.kind != .function_end) {
+            if (t.kind != .separator) return Errors.InvalidFunction;
+            var must_finish = false;
+            while (l.peek()) |it| {
+                if (hard_finish and it.kind == .function_end) break;
+                if (!hard_finish and it.kind == .function_separator and it.content.len >= 2) break;
+                if (must_finish) return Errors.InvalidFunction;
+                try args.append(alloc, try expression.parse(l, alloc));
+                must_finish = !l.skipSeparator();
+            }
+            if (l.peek() == null and hard_finish) return Errors.InvalidFunction;
+            l.consume();
+        }
+    } else if (hard_finish) {
+        return Errors.InvalidFunction;
     }
-    const ref = try Expression.FunctionRef.init(alloc, id);
+    const ref = try Expression.Reference.init(alloc, id);
     return try Expression.Function.init(alloc, ref, try args.toOwnedSlice(alloc));
+}
+
+test "function" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+    var def = try Expression.FunctionDef.init(
+        &[_][]const u8{"args"},
+        false,
+        (try Expression.Boolean.init(alloc, true)).interface,
+    );
+    try dummy.functions.put("root", &def);
+
+    var l = Lexer{ .iterator = .{ .bytes = "root", .i = 0 } };
+    var f = try parseFunction(&l, alloc);
+    var res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "(root)", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "root foo", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "(root foo)", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "root foo ", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "(root foo )", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    res = try f.interface.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "(root", .i = 0 } };
+    try std.testing.expectError(Errors.InvalidFunction, parseFunction(&l, alloc));
+
+    l = Lexer{ .iterator = .{ .bytes = "(root foo())", .i = 0 } };
+    try std.testing.expectError(Errors.InvalidFunction, parseFunction(&l, alloc));
+
+    l = Lexer{ .iterator = .{ .bytes = "(bar)", .i = 0 } };
+    f = try parseFunction(&l, alloc);
+    try std.testing.expectError(Expression.Errors.UnknownFunction, f.interface.eval(alloc, &dummy));
 }
 
 pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {
@@ -62,25 +132,21 @@ test "string" {
     var dummy = Expression.Context.init(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "\"hey\"", .i = 0 } };
-    _ = l.peek();
     var s = try parseString(&l, alloc);
     var res = try s.interface.eval(alloc, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "hey"));
 
     l = Lexer{ .iterator = .{ .bytes = "\"123 hey\"", .i = 0 } };
-    _ = l.peek();
     s = try parseString(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "123 hey"));
 
     l = Lexer{ .iterator = .{ .bytes = "\"[] () hehe\"", .i = 0 } };
-    _ = l.peek();
     s = try parseString(&l, alloc);
     res = try s.interface.eval(alloc, &dummy);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "[] () hehe"));
 
     l = Lexer{ .iterator = .{ .bytes = "\"invalid", .i = 0 } };
-    _ = l.peek();
     try std.testing.expectError(
         Errors.InvalidString,
         parseString(&l, alloc),
@@ -111,13 +177,11 @@ test "list" {
     var dummy = Expression.Context.init(alloc);
 
     var l = Lexer{ .iterator = .{ .bytes = "[]", .i = 0 } };
-    _ = l.peek();
     var s = try parseList(&l, alloc);
     var res = try s.interface.eval(alloc, &dummy);
     try expect(res.as(Expression.List).len == 0);
 
     l = Lexer{ .iterator = .{ .bytes = "[foo]", .i = 0 } };
-    _ = l.peek();
     s = try parseList(&l, alloc);
     var r = (try s.interface.eval(alloc, &dummy)).as(Expression.List);
     try expect(r.len == 1);
@@ -127,7 +191,6 @@ test "list" {
     try expect(std.mem.eql(u8, sub.content.as(Expression.String).content, "foo"));
 
     l = Lexer{ .iterator = .{ .bytes = "[foo 123]", .i = 0 } };
-    _ = l.peek();
     s = try parseList(&l, alloc);
     r = (try s.interface.eval(alloc, &dummy)).as(Expression.List);
     try expect(r.len == 2);
@@ -150,7 +213,7 @@ pub fn parseVariable(l: *Lexer, alloc: Allocator) !Expression {
             Errors.InvalidFunction => return Errors.InvalidEvaluate,
             else => return err,
         };
-        return (try Expression.variable.Evaluate.init(alloc, call)).interface;
+        return (try Expression.Evaluate.init(alloc, call)).interface;
     }
     const sep = tok.kind == .variable_beg;
     if (sep) {
@@ -164,12 +227,59 @@ pub fn parseVariable(l: *Lexer, alloc: Allocator) !Expression {
         tok = l.next() orelse return Errors.InvalidVariable;
         if (tok.kind != .variable_end) return Errors.InvalidVariable;
     }
-    return (try Expression.variable.Var.init(alloc, name)).interface;
+    return (try Expression.Variable.init(alloc, name)).interface;
 }
 
-pub fn parseFunctionReference(l: *Lexer, alloc: Allocator) !*Expression.FunctionRef {
+test "variable" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+    try dummy.variables.put("root", (try Expression.Boolean.init(alloc, true)).interface);
+
+    var l = Lexer{ .iterator = .{ .bytes = "$root", .i = 0 } };
+    var f = try parseVariable(&l, alloc);
+    var res = try f.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "${root}", .i = 0 } };
+    f = try parseVariable(&l, alloc);
+    res = try f.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "${root}next", .i = 0 } };
+    f = try parseVariable(&l, alloc);
+    res = try f.eval(alloc, &dummy);
+    try expect(res.typ == .boolean);
+    try expect(res.as(Expression.Boolean).content);
+
+    l = Lexer{ .iterator = .{ .bytes = "${root", .i = 0 } };
+    try std.testing.expectError(Errors.InvalidVariable, parseVariable(&l, alloc));
+
+    l = Lexer{ .iterator = .{ .bytes = "${foo}", .i = 0 } };
+    f = try parseVariable(&l, alloc);
+    try std.testing.expectError(Expression.Errors.UnknownVariable, f.eval(alloc, &dummy));
+}
+
+pub fn parseReference(l: *Lexer, alloc: Allocator) !*Expression.Reference {
     l.consume();
     const tok = l.next() orelse return Errors.InvalidReference;
     if (!tok.is_identifier) return Errors.InvalidReference;
-    return try Expression.FunctionRef.init(alloc, tok.content);
+    return try Expression.Reference.init(alloc, tok.content);
+}
+
+test "reference" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var dummy = Expression.Context.init(alloc);
+
+    var l = Lexer{ .iterator = .{ .bytes = "&hey", .i = 0 } };
+    var s = try parseReference(&l, alloc);
+    var res = try s.interface.eval(alloc, &dummy);
+    try expect(std.mem.eql(u8, res.as(Expression.Reference).content, "hey"));
 }

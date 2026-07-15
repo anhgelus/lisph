@@ -1,4 +1,4 @@
-script = *( function-expression / function (";" / 2strong-separator ) / comment / separator)
+script = *( function-expression / function (";;" / 2strong-separator ) / comment / separator)
 
 strong-separator = [CR] LF
 sep = 1*WSP / function-separator

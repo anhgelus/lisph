@@ -16,7 +16,7 @@ pub const Kind = enum {
     function_beg,
     function_end,
     function_separator,
-    function_reference,
+    reference,
     list_beg,
     list_end,
     empty,
@@ -81,7 +81,10 @@ pub fn next(self: *Self) ?Token {
         else
             .string_content;
         if (current_kind == .string_content and
-            (next_kind == .separator or next_kind == .function_end or next_kind == .function_separator))
+            (next_kind == .separator or
+                next_kind == .variable_end or
+                next_kind == .function_end or
+                next_kind == .function_separator))
         {
             is_identifier = true;
             break :iter;
@@ -100,12 +103,14 @@ pub fn next(self: *Self) ?Token {
 }
 
 pub inline fn skipSeparator(self: *Self) bool {
-    if (self.peek()) |it|
-        if (it.kind == .separator) {
+    var ok = false;
+    while (self.peek()) |it| {
+        if (it.kind == .separator or it.kind == .function_separator) {
             self.consume();
-            return true;
-        };
-    return false;
+            ok = true;
+        } else break;
+    }
+    return ok;
 }
 
 pub fn peek(self: *Self) ?Token {
@@ -114,6 +119,7 @@ pub fn peek(self: *Self) ?Token {
 }
 
 pub fn consume(self: *Self) void {
+    if (self.before == null) _ = self.peek();
     self.before = null;
 }
 
@@ -126,9 +132,10 @@ pub fn kindOf(rune: u8, before: ?Kind) Kind {
         '\n', ';' => .function_separator,
         ' ' => .separator,
         '"' => .string_delimiter,
-        '&' => .function_reference,
+        '$' => .variable,
+        '&' => .reference,
         '{' => if (before == null) .variable_beg else .string_content,
-        '}' => if (before == null) .variable_end else .string_content,
+        '}' => .variable_end,
         else => if ((rune <= '9' and rune >= '0') and (before == null or before.? == .number))
             .number
         else
@@ -160,6 +167,9 @@ test "basic kind" {
     try testBasicLexer("()", .empty);
     try testBasicLexer("[", .list_beg);
     try testBasicLexer("]", .list_end);
+    try testBasicLexer("$", .variable);
+    try testBasicLexer("{", .variable_beg);
+    try testBasicLexer("}", .variable_end);
     try testBasicLexer("0", .number);
     try testBasicLexer("9", .number);
     try testBasicLexer("00", .number);
@@ -199,4 +209,31 @@ test "complexe" {
     try expect(eql(u8, tok.content, "content"));
     tok = l.next().?;
     try expect(tok.kind == .function_end);
+    try expect(l.next() == null);
+
+    l = Self{ .iterator = Iterator{
+        .bytes = "$var",
+        .i = 0,
+    } };
+    tok = l.next().?;
+    try expect(tok.kind == .variable);
+    tok = l.next().?;
+    try expect(tok.kind == .string_content);
+    try expect(std.mem.eql(u8, tok.content, "var"));
+    try expect(l.next() == null);
+
+    l = Self{ .iterator = Iterator{
+        .bytes = "${var}",
+        .i = 0,
+    } };
+    tok = l.next().?;
+    try expect(tok.kind == .variable);
+    tok = l.next().?;
+    try expect(tok.kind == .variable_beg);
+    tok = l.next().?;
+    try expect(tok.kind == .string_content);
+    try expect(std.mem.eql(u8, tok.content, "var"));
+    tok = l.next().?;
+    try expect(tok.kind == .variable_end);
+    try expect(l.next() == null);
 }
