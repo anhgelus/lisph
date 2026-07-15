@@ -3,30 +3,7 @@ const Allocator = std.mem.Allocator;
 const Expression = @import("Expression.zig");
 const expect = std.testing.expect;
 
-pub const String = struct {
-    content: []const u8,
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{
-            .eval = eval,
-        },
-        .typ = .string,
-    },
-
-    const Self = @This();
-
-    pub fn init(alloc: Allocator, content: []const u8) !*Self {
-        const self = try alloc.create(Self);
-        self.* = .{ .content = content };
-        self.interface.ptr = self;
-        return self;
-    }
-
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
-        const self: *Self = @ptrCast(@alignCast(ptr));
-        return self.interface;
-    }
-};
+pub const String = Expression.Literal([]const u8, .string);
 
 test "string" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -46,30 +23,7 @@ test "string" {
     try expect(std.mem.eql(u8, res.as(String).content, "hello world"));
 }
 
-pub const Number = struct {
-    content: u64,
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{
-            .eval = eval,
-        },
-        .typ = .number,
-    },
-
-    const Self = @This();
-
-    pub fn init(alloc: Allocator, content: u64) !*Self {
-        const self = try alloc.create(Self);
-        self.* = .{ .content = content };
-        self.interface.ptr = self;
-        return self;
-    }
-
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
-        const self: *Self = @ptrCast(@alignCast(ptr));
-        return self.interface;
-    }
-};
+pub const Number = Expression.Literal(u64, .number);
 
 test "number" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -89,30 +43,7 @@ test "number" {
     try expect(res.as(Number).content == 2345678);
 }
 
-pub const Boolean = struct {
-    content: bool,
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{
-            .eval = eval,
-        },
-        .typ = .boolean,
-    },
-
-    const Self = @This();
-
-    pub fn init(alloc: Allocator, content: bool) !*Self {
-        const self = try alloc.create(Self);
-        self.* = .{ .content = content };
-        self.interface.ptr = self;
-        return self;
-    }
-
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
-        const self: *Self = @ptrCast(@alignCast(ptr));
-        return self.interface;
-    }
-};
+pub const Boolean = Expression.Literal(bool, .boolean);
 
 test "boolean" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);

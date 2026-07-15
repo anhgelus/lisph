@@ -73,3 +73,31 @@ pub const Context = struct {
         };
     }
 };
+
+pub fn Literal(comptime V: type, comptime t: Type) type {
+    return struct {
+        content: V,
+        interface: Expression = .{
+            .ptr = undefined,
+            .vtable = undefined,
+            .typ = t,
+        },
+
+        const Self = @This();
+
+        pub fn init(alloc: Allocator, content: V) !*Self {
+            const self = try alloc.create(Self);
+            self.* = .{ .content = content };
+            self.interface.ptr = self;
+            self.interface.vtable = .{
+                .eval = Self.eval,
+            };
+            return self;
+        }
+
+        pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
+            const self: *Self = @ptrCast(@alignCast(ptr));
+            return self.interface;
+        }
+    };
+}

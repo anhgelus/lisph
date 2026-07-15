@@ -24,7 +24,7 @@ pub const Call = struct {
 
     pub fn eval(ptr: *anyopaque, parent: Allocator, ctx: *Expression.Context) Expression.Errors!Expression {
         const self: *Self = @ptrCast(@alignCast(ptr));
-        const body = ctx.functions.get(self.ref.name) orelse return Expression.Errors.UnknownFunction;
+        const body = ctx.functions.get(self.ref.content) orelse return Expression.Errors.UnknownFunction;
         var arena = std.heap.ArenaAllocator.init(parent);
         defer arena.deinit();
         const alloc = arena.allocator();
@@ -72,27 +72,4 @@ pub const Def = struct {
     }
 };
 
-pub const Ref = struct {
-    name: []const u8,
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{
-            .eval = eval,
-        },
-        .typ = .function,
-    },
-
-    const Self = @This();
-
-    pub fn init(alloc: Allocator, name: []const u8) !*Self {
-        const self = try alloc.create(Self);
-        self.* = .{ .name = name };
-        self.interface.ptr = self;
-        return self;
-    }
-
-    pub fn eval(ptr: *anyopaque, _: Allocator, _: *Expression.Context) Expression.Errors!Expression {
-        const self: *Self = @ptrCast(@alignCast(ptr));
-        return self.interface;
-    }
-};
+pub const Ref = Expression.Literal([]const u8, .reference);
