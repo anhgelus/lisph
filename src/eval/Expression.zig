@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-pub const function = @import("function.zig");
+const function = @import("function.zig");
+pub const Function = function.Call;
+pub const FunctionDef = function.Def;
 const literal = @import("literal.zig");
 pub const String = literal.String;
 pub const Boolean = literal.Boolean;

@@ -81,7 +81,7 @@ test "var set" {
 }
 
 pub const Evaluate = struct {
-    call: *Expression.function.Call,
+    call: *Expression.Function,
     interface: Expression = .{
         .ptr = undefined,
         .vtable = .{
@@ -92,7 +92,7 @@ pub const Evaluate = struct {
 
     const Self = @This();
 
-    pub fn init(alloc: Allocator, call: *Expression.function.Call) !*Self {
+    pub fn init(alloc: Allocator, call: *Expression.Function) !*Self {
         const self = try alloc.create(Self);
         self.* = .{ .call = call };
         self.interface.ptr = self;

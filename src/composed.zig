@@ -13,7 +13,7 @@ pub const Errors = error{
     InvalidEvaluate,
 };
 
-pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.function.Call {
+pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
     var tok = l.next().?;
     const hard_finish = tok.kind == .function_beg;
     if (hard_finish) tok = l.next() orelse return Errors.InvalidFunction;
@@ -28,7 +28,7 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.function.Call {
         try args.append(alloc, try expression.parse(l, alloc));
         if (!l.skipSeparator()) return Errors.InvalidFunction;
     }
-    return try Expression.function.Call.init(alloc, id, try args.toOwnedSlice(alloc));
+    return try Expression.Function.init(alloc, id, try args.toOwnedSlice(alloc));
 }
 
 pub fn parseString(l: *Lexer, alloc: Allocator) !*Expression.ComposedString {

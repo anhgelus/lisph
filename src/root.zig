@@ -4,7 +4,7 @@ const Expression = @import("eval/Expression.zig");
 const composed = @import("composed.zig");
 
 const Script = struct {
-    root: []*Expression.function.Call,
+    root: []*Expression.Function,
 };
 
 pub fn parse(alloc: std.mem.Allocator, content: []const u8) !Script {
@@ -12,7 +12,7 @@ pub fn parse(alloc: std.mem.Allocator, content: []const u8) !Script {
         .bytes = content,
         .i = 0,
     } };
-    var root = try std.ArrayList(*Expression.function.Call).initCapacity(alloc, 2);
+    var root = try std.ArrayList(*Expression.Function).initCapacity(alloc, 2);
     while (lexer.peek()) |_| {
         try root.append(alloc, try composed.parseFunction(&lexer, alloc));
     }

@@ -3,15 +3,10 @@
 ## Defining
 
 ```lisp
-(defunc name args expr)
+(defn name args expr)
 ```
 defines a function where `name` is an identifier, `args` is a list of identifier and `expr` is the expression executed
 by the function.
-
-```lisp
-(defmac name args expr)
-```
-defines a macro with the same arguments of `defunc`.
 
 ```lisp
 (do exprs)
@@ -42,11 +37,11 @@ returns the type of `a`.
 are the mathematical operators.
 
 ```lisp
-(.= a b)
-(.> a b)
-(.< a b)
-(.>= a b)
-(.<= a b)
+(= a b)
+(> a b)
+(< a b)
+(>= a b)
+(<= a b)
 ```
 are the mathematical comparison operators.
 
@@ -61,12 +56,12 @@ are the mathematical comparison operators.
 are the logical operators.
 
 ```lisp
-(.| a b)
-(.& a b)
+(| a b)
+(& a b)
 (.^ a b)
-(.~ a b)
-(.<< a b)
-(.>> a b)
+(~ a b)
+(<< a b)
+(>> a b)
 ```
 are the bitwise operators.
 
@@ -142,6 +137,11 @@ It is equivalent to `(defunc "\$name" [] value)`.
 executes `a` if `(= cond true)`.
 It is equivalent to `(if cond a ())`.
 
+```lisp
+(case value [cond expression])
+```
+executes the `expression` if `(= (cond $value) true)`.
+
 ## Stdin, stdout and stderr
 ```lisp
 (| a b)
@@ -165,7 +165,7 @@ $status
 contains the exit code of the last expression executed.
 
 ```lisp
-(> stderr stdout)
+(> $stderr $stdout)
 ```
 is the equivalent of `2>&1` in POSIX Shell.
 
