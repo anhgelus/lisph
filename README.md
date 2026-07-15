@@ -5,9 +5,9 @@ What if a POSIX Shell was inspired by Lisp?
 ## Why?
 
 POSIX Shell looks like Lisp without parenthesis, right?
-And it's syntax is weird, isn't it?
+And its syntax is weird, isn't it?
 
-Lisph works like a POSIX Shell, but it's syntax is easier to learn and to use.
+Lisph works like a POSIX Shell, but its syntax is easier to learn and to use.
 
 ### Lisph vs other shells
 

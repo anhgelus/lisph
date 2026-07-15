@@ -23,6 +23,12 @@ returns an anonymous function with `args` a list of identifier and `expr` an exp
 ```
 returns the type of `a`.
 
+```lisp
+(set name value)
+```
+sets a variable.
+It is equivalent to `(defunc "\$name" [] value)`.
+
 ## Basic functions
 
 ### Integers and booleans
@@ -124,12 +130,6 @@ returns `a` reversed.
 (if cond a b)
 ```
 executes `a` if `(= cond true)` or b otherwise.
-
-```lisp
-(set name value)
-```
-sets a variable.
-It is equivalent to `(defunc "\$name" [] value)`.
 
 ```lisp
 (check cond a)

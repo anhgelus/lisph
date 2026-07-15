@@ -41,6 +41,7 @@ pub const Type = enum {
     list,
     reference,
     subprocess_finished,
+    empty,
 
     pub inline fn name(t: Type) []const u8 {
         return switch (t) {
@@ -48,8 +49,11 @@ pub const Type = enum {
             .number => "number",
             .variable, .evaluate => "unknown",
             .boolean => "boolean",
-            .string, .string_composed => "string",
+            .string => "string",
             .list => "list",
+            .reference => "reference",
+            .subprocess_finished => "subprocess_finished",
+            .empty => "empty",
         };
     }
 };
@@ -138,5 +142,27 @@ pub const Root = struct {
             writer.interface.print("Exit code: {}\n", .{result.term.exited}) catch @panic("exit code write failed to stderr");
             writer.flush() catch @panic("cannot flush exit code to stderr");
         }
+    }
+};
+
+pub const Empty = struct {
+    interface: Expression = .{
+        .ptr = undefined,
+        .vtable = .{ .eval = Self.eval },
+        .typ = .empty,
+    },
+
+    const Self = @This();
+
+    pub fn init(alloc: Allocator) !*Self {
+        const self = try alloc.create(Self);
+        self.* = .{};
+        self.interface.ptr = self;
+        return self;
+    }
+
+    pub fn eval(ptr: *anyopaque, _: Allocator, _: std.Io, _: *Expression.Context) Expression.Errors!Expression {
+        const self: *Self = @ptrCast(@alignCast(ptr));
+        return self.interface;
     }
 };

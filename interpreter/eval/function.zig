@@ -52,7 +52,7 @@ test "call" {
 
     var dummy = Expression.Context.dummy(alloc);
 
-    var f = try Def.init(
+    var f = Def.init(
         &[_][]const u8{"args"},
         false,
         (try Ref.init(alloc, "uwu")).interface,
@@ -65,7 +65,7 @@ test "call" {
     try expect(res.typ == .reference);
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "uwu"));
 
-    f = try Def.init(
+    f = Def.init(
         &[_][]const u8{"val"},
         true,
         (try Expression.Variable.init(alloc, "val")).interface,
@@ -97,7 +97,7 @@ pub const Def = struct {
 
     const Self = @This();
 
-    pub fn init(args: []const []const u8, deconstruct_args: bool, body: Expression) !Self {
+    pub fn init(args: []const []const u8, deconstruct_args: bool, body: Expression) Self {
         return .{
             .args = args,
             .deconstruct_args = deconstruct_args,
@@ -118,7 +118,7 @@ test "def_ref" {
 
     var dummy = Expression.Context.dummy(alloc);
 
-    var s = try Def.init(
+    var s = Def.init(
         &[_][]const u8{},
         false,
         (try Ref.init(alloc, "uwu")).interface,

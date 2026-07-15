@@ -50,7 +50,7 @@ test "function" {
     const io = std.testing.io;
 
     var dummy = Expression.Context.dummy(alloc);
-    var def = try Expression.FunctionDef.init(
+    var def = Expression.FunctionDef.init(
         &[_][]const u8{"args"},
         false,
         (try Expression.Boolean.init(alloc, true)).interface,
