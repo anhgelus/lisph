@@ -55,10 +55,10 @@ test "call" {
     var f = Def.init(
         &[_][]const u8{"args"},
         false,
-        (try Ref.init(alloc, "uwu")).interface,
+        (try Ref.init(alloc, KindRef{ .basic = "uwu" })).interface,
     );
     try dummy.functions.put("foo", &f);
-    const ref = try Ref.init(alloc, "foo");
+    const ref = try Ref.init(alloc, KindRef{ .basic = "foo" });
 
     var c = try Call.init(alloc, ref, &[_]Expression{});
     var res = try c.interface.eval(alloc, io, &dummy);
@@ -121,11 +121,16 @@ test "def_ref" {
     var s = Def.init(
         &[_][]const u8{},
         false,
-        (try Ref.init(alloc, "uwu")).interface,
+        (try Ref.init(alloc, KindRef{ .basic = "uwu" })).interface,
     );
     var res = try s.eval(alloc, io, &dummy);
     try expect(res.typ == .reference);
-    try expect(std.mem.eql(u8, res.as(Ref).content, "uwu"));
+    try expect(std.mem.eql(u8, res.as(Ref).content.basic, "uwu"));
 }
 
-pub const Ref = Expression.Literal([]const u8, .reference);
+pub const KindRef = union(enum) {
+    basic: []const u8,
+    lambda: Def,
+};
+
+pub const Ref = Expression.Literal(KindRef, .reference);

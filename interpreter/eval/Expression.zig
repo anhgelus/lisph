@@ -4,6 +4,7 @@ const function = @import("function.zig");
 pub const Function = function.Call;
 pub const FunctionDef = function.Def;
 pub const Reference = function.Ref;
+pub const KindRef = function.KindRef;
 const literal = @import("literal.zig");
 pub const String = literal.String;
 pub const Boolean = literal.Boolean;

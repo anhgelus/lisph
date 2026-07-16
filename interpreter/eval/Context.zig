@@ -20,13 +20,18 @@ pub fn init(alloc: Allocator, environ: std.process.Environ.Map) Context {
     };
 }
 
-pub fn getFunction(self: @This(), alloc: Allocator, name: []const u8) !Expression.FunctionDef {
-    if (self.functions.get(name)) |it| return it.*;
-    return Expression.FunctionDef{
-        .args = &[_][]const u8{"args"},
-        .deconstruct_args = false,
-        .body = (try Subprocess.init(alloc, name, "args")).interface,
-    };
+pub fn getFunction(self: @This(), alloc: Allocator, ref: Expression.KindRef) !Expression.FunctionDef {
+    switch (ref) {
+        .lambda => |l| return l,
+        .basic => |name| {
+            if (self.functions.get(name)) |it| return it.*;
+            return Expression.FunctionDef{
+                .args = &[_][]const u8{"args"},
+                .deconstruct_args = false,
+                .body = (try Subprocess.init(alloc, name, "args")).interface,
+            };
+        },
+    }
 }
 
 pub const Variable = union(enum) {

@@ -27,7 +27,6 @@ returns the type of `a`.
 (set name value)
 ```
 sets a variable.
-It is equivalent to `(defunc "\$name" [] value)`.
 
 ## Basic functions
 
@@ -124,7 +123,7 @@ returns `a` joined with `b`.
 ```
 returns `a` reversed.
 
-## Basic macros
+## Basic control flow
 
 ```lisp
 (if cond a b)

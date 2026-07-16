@@ -39,7 +39,10 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
     } else if (hard_finish) {
         return Errors.InvalidFunction;
     }
-    const ref = try Expression.Reference.init(alloc, id);
+    const ref = try Expression.Reference.init(
+        alloc,
+        Expression.KindRef{ .basic = id },
+    );
     return try Expression.Function.init(alloc, ref, try args.toOwnedSlice(alloc));
 }
 
@@ -272,7 +275,7 @@ pub fn parseReference(l: *Lexer, alloc: Allocator) !*Expression.Reference {
     l.consume();
     const tok = l.next() orelse return Errors.InvalidReference;
     if (!tok.is_identifier) return Errors.InvalidReference;
-    return try Expression.Reference.init(alloc, tok.content);
+    return try Expression.Reference.init(alloc, Expression.KindRef{ .basic = tok.content });
 }
 
 test "reference" {
@@ -286,5 +289,5 @@ test "reference" {
     var l = Lexer{ .iterator = .{ .bytes = "&hey", .i = 0 } };
     var s = try parseReference(&l, alloc);
     var res = try s.interface.eval(alloc, io, &dummy);
-    try expect(std.mem.eql(u8, res.as(Expression.Reference).content, "hey"));
+    try expect(std.mem.eql(u8, res.as(Expression.Reference).content.basic, "hey"));
 }
