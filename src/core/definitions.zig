@@ -1,6 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const lisph = @import("lisph-interpreter");
+const lisph = @import("interpreter");
 const Expression = lisph.Expression;
 const Errors = Expression.Errors;
 const expect = std.testing.expect;
@@ -51,6 +51,7 @@ fn evalDefn(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Er
 pub const Defn = Expression.CustomFunction(
     "defn",
     &[_][]const u8{ "name", "args", "body" },
+    true,
     evalDefn,
 );
 
@@ -84,7 +85,12 @@ fn evalLambda(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) 
     )).interface;
 }
 
-pub const Lambda = Expression.CustomFunction("lambda", &[_][]const u8{ "args", "body" }, evalLambda);
+pub const Lambda = Expression.CustomFunction(
+    "lambda",
+    &[_][]const u8{ "args", "body" },
+    true,
+    evalLambda,
+);
 
 test "lambda" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -106,23 +112,47 @@ test "lambda" {
     try expect(std.mem.eql(u8, ref.args[0], "owo"));
 }
 
-fn evalType(_: *anyopaque, alloc: Allocator, _: std.Io, ctx: *lisph.Context) Errors!Expression {
-    const t = ctx.getVariable("value").?.local.typ.name();
-    return (try Expression.String.init(alloc, t)).interface;
-}
-
-pub const Type = Expression.CustomFunction("type", &[_][]const u8{"value"}, evalType);
-
 fn evalSet(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
     const raw_name = ctx.getVariable("name").?.local;
     const name = try raw_name.eval(alloc, io, ctx);
     if (name.typ != .string) return Errors.InvalidCast;
-    try ctx.variables.put(name.as(Expression.String).content, ctx.variable("value").?.local);
+    try ctx.variables.put(name.as(Expression.String).content, ctx.getVariable("value").?.local);
     return (try Expression.Empty.init(alloc)).interface;
 }
 
 pub const Set = Expression.CustomFunction(
     "set",
     &[_][]const u8{ "name", "value" },
+    true,
     evalSet,
+);
+
+fn evalExport(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
+    const raw_args = ctx.getVariable("args").?.local;
+    const args = try raw_args.eval(alloc, io, ctx);
+    const l = args.as(Expression.List);
+    std.debug.assert(l.iter_order == .first_to_last);
+    var current = l.content.first;
+    while (current) |it| : (current = it.next) {
+        const res = try Expression.List.Item.from(it).content.eval(alloc, io, ctx);
+        if (res.typ != .string) return Errors.InvalidCast;
+        const name = res.as(Expression.String).content;
+        const variable = ctx.getVariable(name) orelse return Errors.UnknownVariable;
+        try ctx.environ.put(name, switch (variable) {
+            .environ => |v| v,
+            .local => |expr| blk: {
+                const r = try expr.eval(alloc, io, ctx);
+                if (r.typ != .string) return Errors.InvalidCast;
+                break :blk r.as(Expression.String).content;
+            },
+        });
+    }
+    return (try Expression.Empty.init(alloc)).interface;
+}
+
+pub const Export = Expression.CustomFunction(
+    "export",
+    &[_][]const u8{"args"},
+    false,
+    evalExport,
 );

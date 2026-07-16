@@ -24,7 +24,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     std_lib.step.dependOn(&interpreter_lib.step);
-    std_lib.root_module.addImport("lisph-interpreter", interpreter_lib.root_module);
+    std_lib.root_module.addImport("interpreter", interpreter_lib.root_module);
 
     const fmt = b.addFmt(.{
         .paths = &.{
@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
             .strip = optimize != .Debug,
         }),
     });
-    exe.root_module.addImport("lisph-interpreter", interpreter_lib.root_module);
+    exe.root_module.addImport("interpreter", interpreter_lib.root_module);
     exe.root_module.addImport("lib", std_lib.root_module);
     exe.step.dependOn(&interpreter_lib.step);
 

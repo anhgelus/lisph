@@ -24,13 +24,23 @@ returns an anonymous function with `args` a list of identifier and `expr` an exp
 returns the type of `a`.
 
 ```lisp
+(boolean a)
+(string a)
+(number a)
+```
+converts `a` to another type.
+
+```lisp
 (set name value)
 ```
 sets a variable.
 
-## Basic functions
+```lisp
+(export var1 var2...)
+```
+exports `var1`, `var2`...
 
-### Integers and booleans
+## Integers and booleans operators
 ```lisp
 (+ a b)
 (- a b)
@@ -70,11 +80,35 @@ are the logical operators.
 ```
 are the bitwise operators.
 
-### Lists and strings
+## Control flow
+
+```lisp
+(if cond a b)
+```
+executes `a` if `(= cond true)` or b otherwise.
+
+```lisp
+(check cond a)
+```
+executes `a` if `(= cond true)`.
+It is equivalent to `(if cond a ())`.
+
+```lisp
+(case value [cond expression])
+```
+executes the `expression` if `(= (cond $value) true)`.
+
+
+## Lists and strings
 ```lisp
 (append a b)
 ```
 appends `b` to `a`.
+
+```lisp
+(prepend a b)
+```
+prepends `b` to `a`.
 
 ```lisp
 (head a)
@@ -90,7 +124,7 @@ returns every element after the first one.
 (get i a)
 ```
 returns the `i`th element of `a`.
-Prefer using `head` and `tail`.
+It is more idiomatic to use `head` and `tail`.
 
 ```lisp
 (len a)
@@ -123,24 +157,6 @@ returns `a` joined with `b`.
 ```
 returns `a` reversed.
 
-## Basic control flow
-
-```lisp
-(if cond a b)
-```
-executes `a` if `(= cond true)` or b otherwise.
-
-```lisp
-(check cond a)
-```
-executes `a` if `(= cond true)`.
-It is equivalent to `(if cond a ())`.
-
-```lisp
-(case value [cond expression])
-```
-executes the `expression` if `(= (cond $value) true)`.
-
 ## Stdin, stdout and stderr
 ```lisp
 (| a b)
@@ -149,13 +165,18 @@ executes the `expression` if `(= (cond $value) true)`.
 (>> a b)
 ```
 are the equivalent of `a | b`, `a < b`, `a > b` and `a >> b` in POSIX Shell.
+`<<` is useless, because
+```lisp
+cat "Hello
+world"
+```
+is valid.
 
 ```lisp
-$stdin
 $stdout
 $stderr
 ```
-contains the content of the linked `/dev/std{in,out,err}`.
+contains the content of the linked `/dev/std{out,err}`.
 
 ```
 $?
@@ -166,7 +187,7 @@ contains the exit code of the last expression executed.
 ```lisp
 (> $stderr $stdout)
 ```
-is the equivalent of `2>&1` in POSIX Shell.
+is equivalent to `2>&1` in POSIX Shell.
 
 ## Files
 ```lisp

@@ -138,6 +138,7 @@ pub const Ref = Expression.Literal(KindRef, .reference);
 pub fn Custom(
     comptime name: []const u8,
     comptime args: []const []const u8,
+    comptime deconstruct: bool,
     comptime custom_eval: *const fn (*anyopaque, Allocator, std.Io, *Expression.Context) Expression.Errors!Expression,
 ) type {
     return struct {
@@ -152,7 +153,7 @@ pub fn Custom(
             self.* = .{};
             self.interface.ptr = self;
             const defn = try alloc.create(Expression.FunctionDef);
-            defn.* = Expression.FunctionDef.init(args, true, self.interface);
+            defn.* = Expression.FunctionDef.init(args, deconstruct, self.interface);
             try ctx.functions.put(name, defn);
         }
 
