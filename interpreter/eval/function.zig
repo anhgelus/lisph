@@ -134,3 +134,30 @@ pub const KindRef = union(enum) {
 };
 
 pub const Ref = Expression.Literal(KindRef, .reference);
+
+pub fn Custom(
+    comptime name: []const u8,
+    comptime args: []const []const u8,
+    comptime custom_eval: *const fn (*anyopaque, Allocator, std.Io, *Expression.Context) Expression.Errors!Expression,
+) type {
+    return struct {
+        interface: Expression = .{
+            .ptr = undefined,
+            .vtable = .{ .eval = eval },
+            .typ = .function,
+        },
+
+        pub fn register(alloc: Allocator, ctx: *Expression.Context) !void {
+            const self = try alloc.create(@This());
+            self.* = .{};
+            self.interface.ptr = self;
+            const defn = try alloc.create(Expression.FunctionDef);
+            defn.* = Expression.FunctionDef.init(args, true, self.interface);
+            try ctx.functions.put(name, defn);
+        }
+
+        pub fn eval(ptr: *anyopaque, alloc: Allocator, io: std.Io, ctx: *Expression.Context) Expression.Errors!Expression {
+            return custom_eval(ptr, alloc, io, ctx);
+        }
+    };
+}

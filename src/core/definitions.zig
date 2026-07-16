@@ -38,36 +38,21 @@ fn parseCommandArgs(alloc: Allocator, io: std.Io, ctx: *lisph.Context) !Expressi
     };
 }
 
-pub const Defn = struct {
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{ .eval = eval },
-        .typ = .function,
-    },
+fn evalDefn(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
+    const raw_name = ctx.getVariable("name").?.local;
+    if (raw_name.typ != .string) return Errors.InvalidCast;
+    const name = raw_name.as(Expression.String);
+    const defn = try alloc.create(Expression.FunctionDef);
+    defn.* = try parseCommandArgs(alloc, io, ctx);
+    try ctx.functions.put(name.content, defn);
+    return (try Expression.Empty.init(alloc)).interface;
+}
 
-    pub fn register(alloc: Allocator, ctx: *lisph.Context) !void {
-        const self = try alloc.create(@This());
-        self.* = .{};
-        self.interface.ptr = self;
-        const defn = try alloc.create(Expression.FunctionDef);
-        defn.* = Expression.FunctionDef.init(
-            &[_][]const u8{ "name", "args", "body" },
-            true,
-            self.interface,
-        );
-        try ctx.functions.put("defn", defn);
-    }
-
-    pub fn eval(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
-        const raw_name = ctx.getVariable("name").?.local;
-        if (raw_name.typ != .string) return Errors.InvalidCast;
-        const name = raw_name.as(Expression.String);
-        const defn = try alloc.create(Expression.FunctionDef);
-        defn.* = try parseCommandArgs(alloc, io, ctx);
-        try ctx.functions.put(name.content, defn);
-        return (try Expression.Empty.init(alloc)).interface;
-    }
-};
+pub const Defn = Expression.CustomFunction(
+    "defn",
+    &[_][]const u8{ "name", "args", "body" },
+    evalDefn,
+);
 
 test "defn" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -92,33 +77,14 @@ test "defn" {
     try expect(std.mem.eql(u8, res.as(Expression.String).content, "uwu"));
 }
 
-pub const Lambda = struct {
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{ .eval = eval },
-        .typ = .function,
-    },
+fn evalLambda(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
+    return (try Expression.Reference.init(
+        alloc,
+        Expression.KindRef{ .lambda = try parseCommandArgs(alloc, io, ctx) },
+    )).interface;
+}
 
-    pub fn register(alloc: Allocator, ctx: *lisph.Context) !void {
-        const self = try alloc.create(@This());
-        self.* = .{};
-        self.interface.ptr = self;
-        const defn = try alloc.create(Expression.FunctionDef);
-        defn.* = Expression.FunctionDef.init(
-            &[_][]const u8{ "args", "body" },
-            true,
-            self.interface,
-        );
-        try ctx.functions.put("lambda", defn);
-    }
-
-    pub fn eval(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
-        return (try Expression.Reference.init(
-            alloc,
-            Expression.KindRef{ .lambda = try parseCommandArgs(alloc, io, ctx) },
-        )).interface;
-    }
-};
+pub const Lambda = Expression.CustomFunction("lambda", &[_][]const u8{ "args", "body" }, evalLambda);
 
 test "lambda" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -140,57 +106,23 @@ test "lambda" {
     try expect(std.mem.eql(u8, ref.args[0], "owo"));
 }
 
-pub const Type = struct {
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{ .eval = eval },
-        .typ = .function,
-    },
+fn evalType(_: *anyopaque, alloc: Allocator, _: std.Io, ctx: *lisph.Context) Errors!Expression {
+    const t = ctx.getVariable("value").?.local.typ.name();
+    return (try Expression.String.init(alloc, t)).interface;
+}
 
-    pub fn register(alloc: Allocator, ctx: *lisph.Context) !void {
-        const self = try alloc.create(@This());
-        self.* = .{};
-        self.interface.ptr = self;
-        const defn = try alloc.create(Expression.FunctionDef);
-        defn.* = Expression.FunctionDef.init(
-            &[_][]const u8{"value"},
-            true,
-            self.interface,
-        );
-        try ctx.functions.put("type", defn);
-    }
+pub const Type = Expression.CustomFunction("type", &[_][]const u8{"value"}, evalType);
 
-    pub fn eval(_: *anyopaque, alloc: Allocator, _: std.Io, ctx: *lisph.Context) Errors!Expression {
-        const t = ctx.getVariable("value").?.local.typ.name();
-        return (try Expression.String.init(alloc, t)).interface;
-    }
-};
+fn evalSet(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
+    const raw_name = ctx.getVariable("name").?.local;
+    const name = try raw_name.eval(alloc, io, ctx);
+    if (name.typ != .string) return Errors.InvalidCast;
+    try ctx.variables.put(name.as(Expression.String).content, ctx.variable("value").?.local);
+    return (try Expression.Empty.init(alloc)).interface;
+}
 
-pub const Set = struct {
-    interface: Expression = .{
-        .ptr = undefined,
-        .vtable = .{ .eval = eval },
-        .typ = .function,
-    },
-
-    pub fn register(alloc: Allocator, ctx: *lisph.Context) !void {
-        const self = try alloc.create(@This());
-        self.* = .{};
-        self.interface.ptr = self;
-        const defn = try alloc.create(Expression.FunctionDef);
-        defn.* = Expression.FunctionDef.init(
-            &[_][]const u8{ "name", "value" },
-            true,
-            self.interface,
-        );
-        try ctx.functions.put("set", defn);
-    }
-
-    pub fn eval(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Errors!Expression {
-        const raw_name = ctx.getVariable("name").?.local;
-        const name = try raw_name.eval(alloc, io, ctx);
-        if (name.typ != .string) return Errors.InvalidCast;
-        try ctx.variables.put(name.as(Expression.String).content, ctx.variable("value").?.local);
-        return (try Expression.Empty.init(alloc)).interface;
-    }
-};
+pub const Set = Expression.CustomFunction(
+    "set",
+    &[_][]const u8{ "name", "value" },
+    evalSet,
+);
