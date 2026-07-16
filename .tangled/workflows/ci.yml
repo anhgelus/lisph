@@ -5,7 +5,7 @@ when:
 engine: nixery
 
 dependencies:
-  nixpkgs:
+  nixpkgs/nixpkgs-unstable:
     - zig
 
 steps:
