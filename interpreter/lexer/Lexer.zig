@@ -27,7 +27,7 @@ pub const Kind = enum {
         if (self == .string_content and kind == .boolean) return true;
         if (self == .number and kind == .string_content) return true;
         return switch (self) {
-            .string_content, .number, .separator => self == kind,
+            .string_content, .number, .separator, .function_separator => self == kind,
             else => false,
         };
     }
@@ -102,10 +102,10 @@ pub fn next(self: *Self) ?Token {
     };
 }
 
-pub inline fn skipSeparator(self: *Self) bool {
+pub inline fn skipSeparator(self: *Self, func: bool) bool {
     var ok = false;
     while (self.peek()) |it| {
-        if (it.kind == .separator or it.kind == .function_separator) {
+        if (it.kind == .separator or (it.kind == .function_separator and (func or it.content.len == 1))) {
             self.consume();
             ok = true;
         } else break;

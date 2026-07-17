@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const std_lib = b.addLibrary(.{
-        .name = "lisph",
+        .name = "lisph-std",
         .root_module = b.addModule("lisph-std", .{
             .root_source_file = b.path("src/root.zig"),
             .optimize = optimize,

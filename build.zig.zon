@@ -2,6 +2,6 @@
     .name = .lisph,
     .version = "0.0.1",
     .minimum_zig_version = "0.16.0",
-    .paths = .{""},
+    .paths = .{ "src", "interpreter", "build.zig", "LICENSE", "LICENSE.impl", "LICENSE.lang" },
     .fingerprint = 0xe62f934d790ae730,
 }

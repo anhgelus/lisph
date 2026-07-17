@@ -152,8 +152,9 @@ pub fn Custom(
             const self = try alloc.create(@This());
             self.* = .{};
             self.interface.ptr = self;
+            const a = try alloc.dupe([]const u8, args);
             const defn = try alloc.create(Expression.FunctionDef);
-            defn.* = Expression.FunctionDef.init(args, deconstruct, self.interface);
+            defn.* = Expression.FunctionDef.init(a, deconstruct, self.interface);
             try ctx.functions.put(name, defn);
         }
 

@@ -26,12 +26,13 @@ pub fn parseFunction(l: *Lexer, alloc: Allocator) !*Expression.Function {
         if (t.kind != .function_end) {
             if (t.kind != .separator) return Errors.InvalidFunction;
             var must_finish = false;
+            _ = l.skipSeparator(hard_finish);
             while (l.peek()) |it| {
                 if (hard_finish and it.kind == .function_end) break;
                 if (!hard_finish and it.kind == .function_separator and it.content.len >= 2) break;
                 if (must_finish) return Errors.InvalidFunction;
                 try args.append(alloc, try expression.parse(l, alloc));
-                must_finish = !l.skipSeparator();
+                must_finish = !l.skipSeparator(hard_finish);
             }
             if (l.peek() == null and hard_finish) return Errors.InvalidFunction;
             l.consume();
@@ -167,7 +168,7 @@ pub fn parseList(l: *Lexer, alloc: Allocator) !*Expression.List {
     while (tok) |it| : (tok = l.peek()) {
         if (it.kind == .list_end) break;
         try list.append(try expression.parse(l, alloc));
-        if (!l.skipSeparator()) if (l.peek()) |p| if (p.kind != .list_end) return Errors.InvalidList;
+        if (!l.skipSeparator(true)) if (l.peek()) |p| if (p.kind != .list_end) return Errors.InvalidList;
     }
     if (tok == null) return Errors.InvalidList;
     l.consume();

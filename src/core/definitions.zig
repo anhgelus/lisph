@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const lisph = @import("interpreter");
 const Expression = lisph.Expression;
+const Custom = Expression.CustomFunction;
 const Errors = Expression.Errors;
 const expect = std.testing.expect;
 
@@ -48,7 +49,7 @@ fn evalDefn(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Er
     return (try Expression.Empty.init(alloc)).interface;
 }
 
-pub const Defn = Expression.CustomFunction(
+pub const Defn = Custom(
     "defn",
     &[_][]const u8{ "name", "args", "body" },
     true,
@@ -85,7 +86,7 @@ fn evalLambda(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) 
     )).interface;
 }
 
-pub const Lambda = Expression.CustomFunction(
+pub const Lambda = Custom(
     "lambda",
     &[_][]const u8{ "args", "body" },
     true,
@@ -120,7 +121,7 @@ fn evalSet(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) Err
     return (try Expression.Empty.init(alloc)).interface;
 }
 
-pub const Set = Expression.CustomFunction(
+pub const Set = Custom(
     "set",
     &[_][]const u8{ "name", "value" },
     true,
@@ -150,7 +151,7 @@ fn evalExport(_: *anyopaque, alloc: Allocator, io: std.Io, ctx: *lisph.Context) 
     return (try Expression.Empty.init(alloc)).interface;
 }
 
-pub const Export = Expression.CustomFunction(
+pub const Export = Custom(
     "export",
     &[_][]const u8{"args"},
     false,

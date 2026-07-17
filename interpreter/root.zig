@@ -21,6 +21,7 @@ pub fn parse(alloc: std.mem.Allocator, content: []const u8) !Script {
     } };
     var root = try std.ArrayList(Expression.Root).initCapacity(alloc, 2);
     while (lexer.peek()) |_| {
+        _ = lexer.skipSeparator(true);
         const expr = try composed.parseFunction(&lexer, alloc);
         try root.append(alloc, .{ .expr = expr.interface });
     }

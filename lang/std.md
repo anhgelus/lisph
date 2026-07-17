@@ -9,11 +9,6 @@ defines a function where `name` is an identifier, `args` is a list of identifier
 by the function.
 
 ```lisp
-(do exprs)
-```
-executes multiple expressions where `exprs` is a list of expressions.
-
-```lisp
 (lambda args expr)
 ```
 returns an anonymous function with `args` a list of identifier and `expr` an expression.
@@ -98,6 +93,10 @@ It is equivalent to `(if cond a ())`.
 ```
 executes the `expression` if `(= (cond $value) true)`.
 
+```lisp
+(do exprs)
+```
+executes multiple expressions where `exprs` is a list of expressions.
 
 ## Lists and strings
 ```lisp
